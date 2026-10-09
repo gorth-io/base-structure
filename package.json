@@ -22,6 +22,21 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./modules/auth/client": {
+      "types": "./dist/modules/auth/client/index.d.ts",
+      "import": "./dist/modules/auth/client/index.js",
+      "require": "./dist/modules/auth/client/index.cjs"
+    },
+    "./modules/auth/server": {
+      "types": "./dist/modules/auth/server/index.d.ts",
+      "import": "./dist/modules/auth/server/index.js",
+      "require": "./dist/modules/auth/server/index.cjs"
+    },
+    "./modules/auth/desktop": {
+      "types": "./dist/modules/auth/desktop/index.d.ts",
+      "import": "./dist/modules/auth/desktop/index.js",
+      "require": "./dist/modules/auth/desktop/index.cjs"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
@@ -65,6 +80,15 @@
   },
   "typesVersions": {
     "*": {
+      "modules/auth/client": [
+        "dist/modules/auth/client/index.d.ts"
+      ],
+      "modules/auth/server": [
+        "dist/modules/auth/server/index.d.ts"
+      ],
+      "modules/auth/desktop": [
+        "dist/modules/auth/desktop/index.d.ts"
+      ],
       "cores/*": [
         "dist/cores/*.d.ts"
       ],
@@ -83,7 +107,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "docs/auth.md"
   ],
   "scripts": {
     "build": "tsdown --minify",
@@ -93,7 +118,9 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "update": "pnpm update",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:types": "tsc --project tsconfig.test.json",
+    "test:exports": "node --test tests/auth-exports.test.mjs"
   },
   "dependencies": {
     "@ably/ai-transport": "^0.9.0",
@@ -117,7 +144,7 @@
     "jose": "^6.2.12",
     "pg": "^8.23.1",
     "postgres": "^3.4.9",
-    "svix": "^2.7.0",
+    "svix": "^2.8.0",
     "tsx": "^4.23.15",
     "uuid": "^14.0.2",
     "zod": "^4.6.5"
