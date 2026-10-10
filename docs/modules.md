@@ -278,6 +278,60 @@ References: [Better Auth client](https://better-auth.com/docs/concepts/client),
 
 ## Release checks
 
+### TypeScript module conventions and shared auth optimizations
+
+Module contracts are declared once in `src/utils/interface.ts`. Public type
+re-exports at the original HTTP/auth/desktop/Supabase paths remain compatible.
+Internal imports use `@/` and asynchronous control flow uses `async/await` with
+`try/catch/finally`, not Promise `.then/.catch/.finally` chains. Pure projection,
+serialization and formatting helpers live in `src/utils/formatter.ts`. Public
+utility paths are `@gorth/structure/utils/interface` (types only) and
+`@gorth/structure/utils/formatter`. The utility runtime imports no framework,
+database driver, provider SDK, environment, secret or configured service.
+
+`createAuthFreshnessPolicy(overrides, now)` is exported by both auth client and
+server entries. Its returned function accepts `verifiedAt`, `accessExpiresAt`
+and optional `fresh`, and returns `expired`, `refresh`, `verifyIdentity`. The
+default identity freshness window is 120 seconds; overrides and the clock are
+app supplied. Future verification timestamps require revalidation; non-finite
+or negative timestamps are rejected. This helper does **not** authorize users,
+read storage, cache identity, rotate tokens or replace revocation/local-role
+checks. The session engine uses it for its existing refresh/verification decisions.
+
+Client login adapters may return `{ status: "redirecting" }` after starting a
+web navigation. The store stays loading/busy and performs no extra session read.
+Return `{ status: "completed" }` after an SDK/Electron callback to read the new
+public session. Existing `Promise<void>` adapters keep the completed-login
+behavior. SDK session adapters forward this outcome unchanged. Apps are not
+automatically migrated; their navigation adapters must opt into this result.
+
+Discovery cache reads and refresh flights remain shared per factory. Use
+`getVerificationKey()` for normal reads, not `force: true` on every operation.
+After an actual `ERR_JWKS_NO_MATCHING_KEY`, the app can call
+`refreshForUnknownKey(kid, { signal })`. Known IDs do not reload, concurrent
+reloads coalesce, and unknown IDs are throttled by `rotationCooldownMs` (default
+30 seconds). Missing IDs remain rejected, and failures never return expired
+fallback keys. `force: true` remains an explicit operator escape hatch.
+Prepared resolvers remain immutable snapshots; the helper does not transparently
+fetch during signature verification or replay an OAuth code/refresh grant.
+Prepare keys before exchanging/rotating credentials and checkpoint rotated
+credentials durably. Providers should publish overlapping keys before rotation.
+
+Formatters perform transformations only, not trust decisions. In particular,
+`formatOAuthIdentity` requires validated provider claims, OAuth URL helpers
+require validated configuration/transactions, and `formatSessionCredentials`
+is for trusted server/main code only. Never serialize credentials into an app
+response, client state or renderer IPC. App-only logout, event revocation, API
+audience/scopes and local permissions retain their separate responsibilities.
+
+The standardization regression test scans the entire `src/modules` tree for
+contract declarations, relative imports, Promise chains and environment access.
+Existing runtime tests cover OAuth validation, durable refresh checkpoints,
+revocation fences, app-only logout and cancellation. Built ESM/CJS/export and
+browser-safe graph checks also cover the shared utility exports.
+
+### Verification commands
+
 Run `pnpm verify` before pushing a release commit/tag. It checks source/types,
 runtime tests, builds ESM/CommonJS/declarations, then tests the public built
 exports and browser-safe import graph. `prepack` runs the same checks so a failed

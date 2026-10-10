@@ -1,26 +1,8 @@
+import { AuthError } from "@/modules/auth/interface";
+import { validateAuthEndpoint } from "@/modules/auth/server/endpoint";
+import type { AuthTransport } from "@/modules/auth/server/interface";
+import type { SessionBoundTransportOptions } from "@/utils/interface";
 import { jwtVerify, type JWTVerifyGetKey } from "jose";
-import { AuthError } from "../interface";
-import { validateAuthEndpoint } from "./endpoint";
-import type { AuthTransport } from "./interface";
-
-export interface SessionBoundTransportOptions {
-  issuer: string;
-  clientId: string;
-  tokenUrl: string;
-  revocationUrl: string;
-  endpointOrigins: readonly string[];
-  allowLoopbackHttp?: boolean;
-  /** Must be a prepared local resolver, obtained BEFORE token rotation. */
-  key(): JWTVerifyGetKey | undefined;
-  algorithms?: readonly ("RS256" | "ES256" | "EdDSA")[];
-  clockToleranceSeconds?: number;
-  now?: () => number;
-  /** Confidential clients can supply their own authenticated revocation adapter. */
-  revokeRejectedGrant?(
-    refreshToken: string,
-    signal?: AbortSignal,
-  ): Promise<void>;
-}
 
 /** Interactive-session policy wrapper; the OAuth engine still validates nonce/hashes/subject. */
 export function createSessionBoundTransport(
@@ -122,3 +104,5 @@ export function createSessionBoundTransport(
     },
   };
 }
+
+export type { SessionBoundTransportOptions } from "@/utils/interface";

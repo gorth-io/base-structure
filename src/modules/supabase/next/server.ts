@@ -1,8 +1,10 @@
-import type { SupabaseClientOptions } from '@supabase/supabase-js'
-import { DatabaseSchema, DefaultSchema } from "@/lib/interface"
-import { createBrowserClient, createServerClient, type CookieMethodsServer } from "@supabase/ssr";
-
-export type CommonCookieMethods = Pick<CookieMethodsServer, 'getAll' | 'setAll'>
+import type {
+  CommonCookieMethods,
+  DatabaseSchema,
+  DefaultSchema,
+} from "@/utils/interface";
+import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClientOptions } from "@supabase/supabase-js";
 
 export function createServer<
   Database = any,
@@ -11,28 +13,22 @@ export function createServer<
   url: string,
   publishableKey: string,
   cookies: CommonCookieMethods,
-  options?: SupabaseClientOptions<SchemaName>
+  options?: SupabaseClientOptions<SchemaName>,
 ) {
-  return createServerClient<Database, SchemaName>(
-    url,
-    publishableKey,
-    {
-      ...options,
-      cookies: {
-        getAll() {
-          return cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            // @ts-ignore
-            cookies.setAll(cookiesToSet);
-            // cookiesToSet.forEach(({ name, value, options }) =>
-            //   cookies.set(name, value, options)
-            // )
-          } catch {
-          }
-        },
+  return createServerClient<Database, SchemaName>(url, publishableKey, {
+    ...options,
+    cookies: {
+      getAll() {
+        return cookies.getAll();
       },
-    }
-  );
+      async setAll(cookiesToSet, headers) {
+        try {
+          await cookies.setAll?.(cookiesToSet, headers);
+        } catch {
+          /* A read-only server render cannot persist refreshed cookies. */
+        }
+      },
+    },
+  });
 }
+export type { CommonCookieMethods } from "@/utils/interface";

@@ -1,30 +1,10 @@
-import { AuthError } from "../interface";
-import type { AuthClientAdapter } from "./index";
-
-/** SDK envelopes are unwrapped here, never stored in the public client snapshot. */
-export interface SessionSdkResult<Data> {
-  data?: Data | null;
-  error?: unknown;
-}
-
-export interface SessionSdkSession<User> {
-  user: User;
-  session: { expiresAt: Date | string | number };
-}
-
-export interface SessionAuthAdapterOptions<ProviderUser, User> {
-  getSession(
-    signal: AbortSignal,
-  ): Promise<SessionSdkResult<SessionSdkSession<ProviderUser>>>;
-  signOut(signal: AbortSignal): Promise<SessionSdkResult<unknown>>;
-  /** Select public fields explicitly; do not spread provider users containing private metadata. */
-  mapUser(user: ProviderUser): User;
-  /** App owns credentials/forms/navigation and the SDK-specific login call. */
-  login: AuthClientAdapter<User>["login"];
-  /** Accept ONLY explicit safe auth codes, not provider messages/response bodies. */
-  errorCode?(error: unknown): AuthError["code"];
-  now?: () => number;
-}
+import type { AuthClientAdapter } from "@/modules/auth/client/index";
+import { AuthError } from "@/modules/auth/interface";
+import { formatEpochMilliseconds } from "@/utils/formatter";
+import type {
+  SessionAuthAdapterOptions,
+  SessionSdkResult,
+} from "@/utils/interface";
 
 /** Better Auth/Neon-style session adapter; imports neither SDK nor React/env/DB. */
 export function createSessionAuthAdapter<ProviderUser, User>(
@@ -76,12 +56,7 @@ export function createSessionAuthAdapter<ProviderUser, User>(
         check(result);
         if (result.data == null) return null;
         const value = result.data.session.expiresAt;
-        const expiresAt =
-          value instanceof Date
-            ? value.getTime()
-            : typeof value === "string"
-              ? Date.parse(value)
-              : value;
+        const expiresAt = formatEpochMilliseconds(value);
         if (!Number.isSafeInteger(expiresAt) || expiresAt <= 0)
           throw new AuthError("rejected");
         if (expiresAt <= now()) return null;
@@ -95,3 +70,9 @@ export function createSessionAuthAdapter<ProviderUser, User>(
       }),
   };
 }
+
+export type {
+  SessionAuthAdapterOptions,
+  SessionSdkResult,
+  SessionSdkSession,
+} from "@/utils/interface";

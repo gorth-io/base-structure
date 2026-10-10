@@ -1,13 +1,10 @@
-import { AuthError } from "../interface";
+import { AuthError } from "@/modules/auth/interface";
+import type { AuthEndpointPolicy } from "@/utils/interface";
 
 /** Shared validation only: app supplies exact origins and development policy. */
 export function validateAuthEndpoint(
   value: string,
-  options: {
-    origins?: readonly string[];
-    allowLoopbackHttp?: boolean;
-    allowedPath?(url: URL): boolean;
-  },
+  options: AuthEndpointPolicy,
   rejected = false,
 ): URL {
   try {

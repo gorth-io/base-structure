@@ -1,5 +1,5 @@
-import type { ProofStorage } from "./interface";
-import { AuthError } from "../interface";
+import { AuthError } from "@/modules/auth/interface";
+import type { ProofStorage } from "@/modules/auth/server/interface";
 import type { DpopReplayStore } from "better-auth/oauth2";
 
 /** Feed this adapter to Better Auth's request verifier; it is NOT proof verification itself. */

@@ -1,2 +1,2 @@
-export * from './client'
-export * from './server'
+export * from "@/modules/supabase/express/client";
+export * from "@/modules/supabase/express/server";

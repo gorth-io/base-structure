@@ -1,27 +1,10 @@
+import type { FetcherOptions } from "@/utils/interface";
 import {
   AxiosHeaders,
   type AxiosInstance,
-  type AxiosRequestConfig,
   type AxiosResponse,
-  type Method,
   type RawAxiosHeaders,
 } from "axios";
-
-export interface FetcherOptions<
-  Body = unknown,
-  Params = Record<string, unknown>,
-> extends Omit<
-  AxiosRequestConfig<Body>,
-  "url" | "method" | "data" | "params" | "withCredentials"
-> {
-  url: string | URL;
-  method: Method;
-  body?: Body;
-  params?: Params;
-  cache?: RequestCache;
-  credentials?: RequestCredentials;
-  redirect?: RequestRedirect;
-}
 
 /** App owns instance setup, adapter selection, authentication and destination policy. */
 export function createFetcher(client: Pick<AxiosInstance, "request">) {
@@ -71,3 +54,5 @@ export function createFetcher(client: Pick<AxiosInstance, "request">) {
     return response;
   };
 }
+
+export type { FetcherOptions } from "@/utils/interface";

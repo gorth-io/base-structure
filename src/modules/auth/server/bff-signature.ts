@@ -1,19 +1,10 @@
+import { AuthError } from "@/modules/auth/interface";
+import { formatHexBytes } from "@/utils/formatter";
+import type {
+  BffSignatureOptions,
+  BffVerifierOptions,
+} from "@/utils/interface";
 import { base64url } from "jose";
-import { AuthError } from "../interface";
-import type { ProofStorage } from "./interface";
-
-export interface BffSignatureOptions {
-  /** Protocol/app namespace prevents signatures being replayed in another protocol. */
-  context: string;
-  /** Key manager belongs to the app. Never import these server helpers into browser UI. */
-  key(): Uint8Array | Promise<Uint8Array>;
-  now?: () => number;
-  maxBodyBytes?: number;
-}
-export interface BffVerifierOptions extends BffSignatureOptions {
-  proof: ProofStorage;
-  maxAgeMs?: number;
-}
 
 const encoder = new TextEncoder();
 function validate(options: BffSignatureOptions) {
@@ -73,15 +64,15 @@ async function canonical(
     throw new AuthError("rejected");
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return encoder.encode(
-    [options.context, method, target, timestamp, nonce, bodyHash(digest)].join(
-      "\n",
-    ),
+    [
+      options.context,
+      method,
+      target,
+      timestamp,
+      nonce,
+      formatHexBytes(digest),
+    ].join("\n"),
   );
-}
-function bodyHash(buffer: ArrayBuffer) {
-  return [...new Uint8Array(buffer)]
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** Server-side BFF signer. No env reads, global secret, cookie handling or DB connection. */
@@ -100,7 +91,7 @@ export function createBffSigner(options: BffSignatureOptions) {
     return {
       "x-bff-time": timestamp,
       "x-bff-nonce": nonce,
-      "x-bff-signature": bodyHash(signature),
+      "x-bff-signature": formatHexBytes(signature),
     };
   };
 }
@@ -144,7 +135,9 @@ export function createBffVerifier(options: BffVerifierOptions) {
     if (!valid) throw new AuthError("rejected");
     const proofKey =
       "bff:" +
-      bodyHash(await crypto.subtle.digest("SHA-256", encoder.encode(nonce)));
+      formatHexBytes(
+        await crypto.subtle.digest("SHA-256", encoder.encode(nonce)),
+      );
     try {
       // A future-dated proof can remain valid for 2*age; retain through that bound.
       if (!(await options.proof.consume(proofKey, now + 2 * age + 1)))
@@ -155,3 +148,8 @@ export function createBffVerifier(options: BffVerifierOptions) {
     }
   };
 }
+
+export type {
+  BffSignatureOptions,
+  BffVerifierOptions,
+} from "@/utils/interface";

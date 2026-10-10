@@ -1,1 +1,1 @@
-export { createExpressClient } from './client'
+export { createExpressClient } from "@/modules/supabase/express/client";

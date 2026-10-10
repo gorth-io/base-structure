@@ -1,41 +1,14 @@
-import { AuthError } from "../interface";
-import type { LoginTransaction, VerifiedLogin } from "../server/interface";
-
-export interface DesktopLoginProvider {
-  startLogin(
-    returnTo?: string,
-    prompt?: "login" | "create" | "consent" | "select_account",
-  ): Promise<{ url: string; transaction: LoginTransaction }>;
-  finishLogin(
-    callback: string,
-    transaction: LoginTransaction,
-    signal?: AbortSignal,
-  ): Promise<VerifiedLogin>;
-}
-
-export interface DesktopLoginAdapter {
-  /** Register before navigating. App owns its loopback listener/auth window and cleanup. */
-  listen(receive: (url: string) => boolean): () => void;
-  open(url: string, signal: AbortSignal): Promise<void>;
-  close(): Promise<void>;
-}
+import { waitForAuthOperation } from "@/modules/auth/client/retry";
+import { AuthError } from "@/modules/auth/interface";
+import type { VerifiedLogin } from "@/modules/auth/server/interface";
+import type { DesktopLoginInput, DesktopLoginOptions } from "@/utils/interface";
 
 /** MAIN PROCESS ONLY. No Electron dependency, renderer tokens, env reads, or HTTP listener. */
-export function createDesktopLogin(options: {
-  provider: DesktopLoginProvider;
-  adapter: DesktopLoginAdapter;
-  now?: () => number;
-}) {
+export function createDesktopLogin(options: DesktopLoginOptions) {
   let busy = false;
   const now = options.now ?? Date.now;
 
-  async function login(
-    input: {
-      returnTo?: string;
-      prompt?: "login" | "create" | "consent" | "select_account";
-      signal?: AbortSignal;
-    } = {},
-  ): Promise<VerifiedLogin> {
+  async function login(input: DesktopLoginInput = {}): Promise<VerifiedLogin> {
     if (busy) throw new AuthError("unavailable");
     busy = true;
     const controller = new AbortController();
@@ -99,19 +72,20 @@ export function createDesktopLogin(options: {
         }, transaction.expiresAt - now());
       });
       // Subscribe before open: the window/listener can synchronously deliver a callback.
-      void callback.catch(() => {});
+      void (async () => {
+        try {
+          await callback;
+        } catch {
+          /* The main wait reports cancellation; observe an early callback failure. */
+        }
+      })();
       controller.signal.throwIfAborted();
       // Bound BOTH navigation and callback wait; a hanging window open cannot skip timeout.
-      const value = await Promise.race([
-        options.adapter.open(url, controller.signal).then(() => callback),
-        new Promise<never>((_, reject) => {
-          controller.signal.addEventListener(
-            "abort",
-            () => reject(new AuthError("cancelled")),
-            { once: true },
-          );
-        }),
-      ]);
+      const navigation = async () => {
+        await options.adapter.open(url, controller.signal);
+        return await callback;
+      };
+      const value = await waitForAuthOperation(navigation(), controller.signal);
       const result = await options.provider.finishLogin(
         value,
         transaction,
@@ -131,7 +105,9 @@ export function createDesktopLogin(options: {
       } finally {
         input.signal?.removeEventListener("abort", abort);
         try {
-          await options.adapter.close().catch(() => {});
+          await options.adapter.close();
+        } catch {
+          /* Cleanup failure must not override the auth result. */
         } finally {
           busy = false;
         }
@@ -140,3 +116,10 @@ export function createDesktopLogin(options: {
   }
   return { login };
 }
+
+export type {
+  DesktopLoginAdapter,
+  DesktopLoginInput,
+  DesktopLoginOptions,
+  DesktopLoginProvider,
+} from "@/utils/interface";

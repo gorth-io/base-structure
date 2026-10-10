@@ -1,16 +1,21 @@
+import { AuthError } from "@/modules/auth/interface";
+import type { AuthCipherOptions } from "@/utils/interface";
 import { base64url, EncryptJWT, jwtDecrypt, type JWTPayload } from "jose";
-import { AuthError } from "../interface";
 
 export function randomAuthValue(): string {
   return base64url.encode(crypto.getRandomValues(new Uint8Array(32)));
 }
 
 export async function fingerprintAuthValue(value: string): Promise<string> {
-  return base64url.encode(
-    new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
-    ),
-  );
+  try {
+    return base64url.encode(
+      new Uint8Array(
+        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+      ),
+    );
+  } catch {
+    throw new AuthError("unavailable");
+  }
 }
 
 export function equalAuthValue(left: string, right: string): boolean {
@@ -22,11 +27,7 @@ export function equalAuthValue(left: string, right: string): boolean {
 }
 
 /** Framework-free authenticated encryption. Key management/rotation belongs to the app. */
-export function createAuthCipher(options: {
-  key: Uint8Array;
-  audience: string;
-  now?: () => number;
-}) {
+export function createAuthCipher(options: AuthCipherOptions) {
   if (options.key.length !== 32 || !options.audience)
     throw new AuthError("invalid_configuration");
   const key = options.key.slice();
@@ -37,19 +38,24 @@ export function createAuthCipher(options: {
       purpose: "credentials" | "transaction",
       expiresAt: number,
     ) {
-      if (!Number.isFinite(expiresAt) || expiresAt <= now())
-        throw new AuthError("rejected");
-      return new EncryptJWT({ data })
-        .setProtectedHeader({
-          alg: "dir",
-          enc: "A256GCM",
-          typ: "gorth-auth+jwe",
-        })
-        .setIssuer("gorth:" + purpose)
-        .setAudience(options.audience)
-        .setIssuedAt(Math.floor(now() / 1000))
-        .setExpirationTime(Math.ceil(expiresAt / 1000))
-        .encrypt(key);
+      try {
+        if (!Number.isFinite(expiresAt) || expiresAt <= now())
+          throw new AuthError("rejected");
+        return await new EncryptJWT({ data })
+          .setProtectedHeader({
+            alg: "dir",
+            enc: "A256GCM",
+            typ: "gorth-auth+jwe",
+          })
+          .setIssuer("gorth:" + purpose)
+          .setAudience(options.audience)
+          .setIssuedAt(Math.floor(now() / 1000))
+          .setExpirationTime(Math.ceil(expiresAt / 1000))
+          .encrypt(key);
+      } catch (error) {
+        if (error instanceof AuthError) throw error;
+        throw new AuthError("unavailable");
+      }
     },
     async open(
       value: string,

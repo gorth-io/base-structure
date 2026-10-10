@@ -1,11 +1,5 @@
+import type { CallerErrorOptions } from "@/utils/interface";
 import { isAxiosError } from "axios";
-
-export interface CallerErrorOptions {
-  status?: number;
-  code?: string;
-  /** Opt-in safe endpoint metadata only; never include Axios config/request/cause. */
-  details?: unknown;
-}
 
 export class CallerError extends Error {
   readonly status?: number;
@@ -36,3 +30,5 @@ export function normalizeCallerError(error: unknown): CallerError {
     return new CallerError("Request cancelled", { code: "ERR_CANCELED" });
   return new CallerError("Request failed");
 }
+
+export type { CallerErrorOptions } from "@/utils/interface";

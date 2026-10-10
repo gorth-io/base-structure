@@ -1,27 +1,28 @@
-export interface AuthRetryOptions {
-  /** App session read/refresh or trusted IPC; never return OAuth tokens. */
-  refresh(signal: AbortSignal): Promise<boolean>;
-  getStatus(error: unknown): number | undefined;
-}
-
-export interface AuthRetryInput {
-  enabled?: boolean;
-  signal?: AbortSignal;
-}
+import type { AuthRetryInput, AuthRetryOptions } from "@/utils/interface";
 
 /** Waiter cancellation must not abort a refresh needed by other requests. */
-export function waitForAuthOperation<Value>(
+export async function waitForAuthOperation<Value>(
   operation: Promise<Value>,
   signal?: AbortSignal,
 ): Promise<Value> {
-  if (!signal) return operation;
-  if (signal.aborted) return Promise.reject(signal.reason);
-  return new Promise((resolve, reject) => {
-    const abort = () => reject(signal.reason);
-    signal.addEventListener("abort", abort, { once: true });
-    operation.then(resolve, reject).finally(() => {
+  if (!signal) return await operation;
+  return await new Promise<Value>((resolve, reject) => {
+    const abort = () => {
       signal.removeEventListener("abort", abort);
-    });
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+    // Observe even a cancelled waiter's operation so a late rejection is handled.
+    void (async () => {
+      try {
+        resolve(await operation);
+      } catch (error) {
+        reject(error);
+      } finally {
+        signal.removeEventListener("abort", abort);
+      }
+    })();
   });
 }
 
@@ -43,16 +44,21 @@ export function createAuthRetry(options: AuthRetryOptions) {
     controller = new AbortController();
     const signal = controller.signal;
     const version = generation;
-    const operation = Promise.resolve()
-      .then(() => options.refresh(signal))
-      .then(
-        (ok) => ok && version === generation && !disposed && !signal.aborted,
-      )
-      .catch(() => false);
+    let operation!: Promise<boolean>;
+    operation = (async () => {
+      // Register the flight before invoking an adapter that may throw/re-enter.
+      await Promise.resolve();
+      try {
+        if (signal.aborted || disposed || version !== generation) return false;
+        const ok = await options.refresh(signal);
+        return ok && version === generation && !disposed && !signal.aborted;
+      } catch {
+        return false;
+      } finally {
+        if (flight === operation) flight = undefined;
+      }
+    })();
     flight = operation;
-    void operation.finally(() => {
-      if (flight === operation) flight = undefined;
-    });
     return operation;
   }
 
@@ -78,7 +84,7 @@ export function createAuthRetry(options: AuthRetryOptions) {
         )
           throw error;
         input.signal?.throwIfAborted();
-        return request();
+        return await request();
       }
     },
     reset,
@@ -88,3 +94,5 @@ export function createAuthRetry(options: AuthRetryOptions) {
     },
   };
 }
+
+export type { AuthRetryInput, AuthRetryOptions } from "@/utils/interface";

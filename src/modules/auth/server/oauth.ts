@@ -1,23 +1,29 @@
-import { base64url, jwtVerify, type JWTVerifyGetKey } from "jose";
-import { AuthError } from "../interface";
-import { createAuthPolicy, resolveReturnPath } from "../policy";
+import { AuthError } from "@/modules/auth/interface";
+import { createAuthPolicy, resolveReturnPath } from "@/modules/auth/policy";
 import {
   equalAuthValue,
   fingerprintAuthValue,
   randomAuthValue,
-} from "./crypto";
-import {
-  loginTransactionSchema,
-  oauthIdentitySchema,
-  oauthTokenSchema,
-} from "./schema";
+} from "@/modules/auth/server/crypto";
 import type {
   LoginTransaction,
   OAuthConfig,
   OAuthCredentials,
   OAuthOptions,
   VerifiedLogin,
-} from "./interface";
+} from "@/modules/auth/server/interface";
+import {
+  loginTransactionSchema,
+  oauthIdentitySchema,
+  oauthTokenSchema,
+} from "@/modules/auth/server/schema";
+import {
+  formatOAuthAuthorizationUrl,
+  formatOAuthIdentity,
+  formatOAuthLogoutUrl,
+  formatOAuthTokenBody,
+} from "@/utils/formatter";
+import { base64url, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 function trustedUrl(value: string, allowLoopback: boolean): URL {
   try {
@@ -218,20 +224,13 @@ export function createOAuthProvider(options: OAuthOptions) {
     }
   }
 
-  function tokenBody(body: URLSearchParams) {
-    body.set("client_id", config.clientId);
-    for (const resource of config.resources ?? [])
-      body.append("resource", resource);
-    return body;
-  }
-
   async function tokens(body: URLSearchParams, signal?: AbortSignal) {
     const result = oauthTokenSchema.safeParse(
       await request(
         config.endpoints.token,
         "POST",
         { "Content-Type": "application/x-www-form-urlencoded" },
-        tokenBody(body),
+        formatOAuthTokenBody(body, config),
         signal,
       ),
     );
@@ -251,16 +250,8 @@ export function createOAuthProvider(options: OAuthOptions) {
     );
     if (!result.success || result.data.sub !== credentials.subject)
       throw new AuthError("rejected");
-    const data = result.data;
     // Deliberate projection: no roles, credentials, or arbitrary provider claims cross this boundary.
-    return {
-      subject: data.sub,
-      name: data.name,
-      email: data.email,
-      emailVerified: data.email_verified,
-      username: data.preferred_username,
-      image: data.picture,
-    };
+    return formatOAuthIdentity(result.data);
   }
 
   async function startLogin(
@@ -287,21 +278,15 @@ export function createOAuthProvider(options: OAuthOptions) {
       throw new AuthError("unavailable");
     }
     if (!reserved) throw new AuthError("unavailable");
-    const url = new URL(config.endpoints.authorization);
-    url.search = new URLSearchParams({
-      response_type: "code",
-      client_id: config.clientId,
-      redirect_uri: config.redirectUri,
-      scope: config.scopes.join(" "),
-      state: transaction.state,
-      nonce: transaction.nonce,
-      code_challenge: await fingerprintAuthValue(transaction.verifier),
-      code_challenge_method: "S256",
-    }).toString();
-    if (prompt) url.searchParams.set("prompt", prompt);
-    for (const resource of config.resources ?? [])
-      url.searchParams.append("resource", resource);
-    return { url: url.href, transaction };
+    return {
+      url: formatOAuthAuthorizationUrl(
+        config,
+        transaction,
+        await fingerprintAuthValue(transaction.verifier),
+        prompt,
+      ),
+      transaction,
+    };
   }
 
   async function finishLogin(
@@ -397,7 +382,11 @@ export function createOAuthProvider(options: OAuthOptions) {
         returnTo,
       };
     } catch (error) {
-      await revoke(credentials).catch(() => {});
+      try {
+        await revoke(credentials);
+      } catch {
+        /* Preserve the login failure even if remote cleanup is unavailable. */
+      }
       throw error;
     }
   }
@@ -468,12 +457,11 @@ export function createOAuthProvider(options: OAuthOptions) {
   function logoutUrl() {
     if (!config.endpoints.endSession || !config.postLogoutRedirectUri)
       throw new AuthError("invalid_configuration");
-    const url = new URL(config.endpoints.endSession);
-    url.search = new URLSearchParams({
-      client_id: config.clientId,
-      post_logout_redirect_uri: config.postLogoutRedirectUri,
-    }).toString();
-    return url.href; // No ID/access/refresh token in navigation URLs.
+    return formatOAuthLogoutUrl(
+      config.endpoints.endSession,
+      config.clientId,
+      config.postLogoutRedirectUri,
+    );
   }
 
   return {

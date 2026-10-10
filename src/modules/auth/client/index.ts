@@ -1,40 +1,37 @@
-import {
-  AuthError,
-  type PublicSession,
-  type AuthErrorCode,
-} from "../interface";
-import { resolveReturnPath } from "../policy";
+import { AuthError, type PublicSession } from "@/modules/auth/interface";
+import { resolveReturnPath } from "@/modules/auth/policy";
+import type {
+  AuthClientAdapter,
+  AuthClientState,
+  AuthLoginInput,
+} from "@/utils/interface";
 
-export { AuthError } from "../interface";
-export type { AuthIdentity, AuthErrorCode, PublicSession } from "../interface";
-export { createAuthRetry } from "./retry";
-export type { AuthRetryOptions, AuthRetryInput } from "./retry";
-export { createSessionAuthAdapter } from "./session-adapter";
+export { createAuthRetry } from "@/modules/auth/client/retry";
+export type {
+  AuthRetryInput,
+  AuthRetryOptions,
+} from "@/modules/auth/client/retry";
+export { createSessionAuthAdapter } from "@/modules/auth/client/session-adapter";
 export type {
   SessionAuthAdapterOptions,
   SessionSdkResult,
   SessionSdkSession,
-} from "./session-adapter";
-
-export interface AuthClientAdapter<User> {
-  /** Same-origin app endpoint on web; trusted preload IPC on desktop. No OAuth tokens. */
-  read(signal: AbortSignal): Promise<PublicSession<User> | null>;
-  login(
-    input: {
-      returnTo: string;
-      prompt?: "login" | "create" | "consent" | "select_account";
-    },
-    signal: AbortSignal,
-  ): Promise<void>;
-  logout(signal: AbortSignal): Promise<void>;
-}
-
-export interface AuthClientState<User> {
-  status: "loading" | "authenticated" | "anonymous" | "error";
-  session: PublicSession<User> | null;
-  busy: boolean;
-  error: Exclude<AuthErrorCode, "invalid_configuration"> | null;
-}
+} from "@/modules/auth/client/session-adapter";
+export { AuthError } from "@/modules/auth/interface";
+export type {
+  AuthErrorCode,
+  AuthIdentity,
+  PublicSession,
+} from "@/modules/auth/interface";
+export {
+  createAuthFreshnessPolicy,
+  createAuthPolicy,
+} from "@/modules/auth/policy";
+export type {
+  AuthFreshness,
+  AuthFreshnessInput,
+  AuthPolicy,
+} from "@/utils/interface";
 
 /** Vanilla external store: usable with React.useSyncExternalStore, Vite, and preload IPC. */
 export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
@@ -74,57 +71,55 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
 
   function load(): Promise<PublicSession<User> | null> {
     if (disposed) return Promise.reject(new AuthError("cancelled"));
-    if (actionFlight) return actionFlight.then(() => state.session);
+    if (actionFlight) {
+      return (async () => {
+        await actionFlight;
+        return state.session;
+      })();
+    }
     if (readFlight) return readFlight;
     const { signal, version } = reset();
     // Background revalidation must not flash an authenticated view to signed-out.
     // The app/API still verifies authorization on every protected operation.
     publish({ ...state, busy: true, error: null });
-    const flight = Promise.resolve()
-      .then(() => adapter.read(signal))
-      .then(
-        (session) => {
-          if (version !== generation || disposed) return state.session;
-          publish({
-            status: session ? "authenticated" : "anonymous",
-            session,
-            busy: false,
-            error: null,
-          });
-          return session;
-        },
-        (error: unknown) => {
-          if (version === generation && !disposed)
-            publish({
-              status: "error",
-              session: null,
-              busy: false,
-              error:
-                error instanceof AuthError &&
-                error.code !== "invalid_configuration"
-                  ? error.code
-                  : "unavailable",
-            });
-          throw error instanceof AuthError
-            ? error
-            : new AuthError("unavailable");
-        },
-      )
-      .finally(() => {
+    let flight!: Promise<PublicSession<User> | null>;
+    flight = (async () => {
+      await Promise.resolve();
+      try {
+        const session = await adapter.read(signal);
+        if (version !== generation || disposed) return state.session;
+        publish({
+          status: session ? "authenticated" : "anonymous",
+          session,
+          busy: false,
+          error: null,
+        });
+        return session;
+      } catch (error) {
+        if (version === generation && !disposed) publishFailure(error);
+        throw error instanceof AuthError ? error : new AuthError("unavailable");
+      } finally {
         if (readFlight === flight) readFlight = undefined;
-      });
+      }
+    })();
     readFlight = flight;
     return flight;
   }
 
-  function action(
-    kind: "login" | "logout",
-    input: {
-      returnTo?: string;
-      prompt?: "login" | "create" | "consent" | "select_account";
-    } = {},
-  ) {
-    if (actionFlight) return Promise.reject(new AuthError("unavailable"));
+  function publishFailure(error: unknown) {
+    publish({
+      status: "error",
+      session: null,
+      busy: false,
+      error:
+        error instanceof AuthError && error.code !== "invalid_configuration"
+          ? error.code
+          : "unavailable",
+    });
+  }
+
+  async function action(kind: "login" | "logout", input: AuthLoginInput = {}) {
+    if (actionFlight) throw new AuthError("unavailable");
     const returnTo = resolveReturnPath(input.returnTo);
     const { signal, version } = reset();
     publish({
@@ -133,10 +128,18 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
       busy: true,
       error: null,
     });
-    const flight = Promise.resolve()
-      .then(async () => {
+    let flight!: Promise<void>;
+    flight = (async () => {
+      await Promise.resolve();
+      try {
         if (kind === "logout") await adapter.logout(signal);
-        else await adapter.login({ returnTo, prompt: input.prompt }, signal);
+        else {
+          const result = await adapter.login(
+            { returnTo, prompt: input.prompt },
+            signal,
+          );
+          if (result?.status === "redirecting") return;
+        }
         if (version !== generation || disposed) return;
         const session = kind === "logout" ? null : await adapter.read(signal);
         if (version === generation && !disposed)
@@ -146,24 +149,13 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
             busy: false,
             error: null,
           });
-      })
-      .catch((error: unknown) => {
-        if (version === generation && !disposed)
-          publish({
-            status: "error",
-            session: null,
-            busy: false,
-            error:
-              error instanceof AuthError &&
-              error.code !== "invalid_configuration"
-                ? error.code
-                : "unavailable",
-          });
+      } catch (error) {
+        if (version === generation && !disposed) publishFailure(error);
         throw error instanceof AuthError ? error : new AuthError("unavailable");
-      })
-      .finally(() => {
+      } finally {
         if (actionFlight === flight) actionFlight = undefined;
-      });
+      }
+    })();
     actionFlight = flight;
     return flight;
   }
@@ -178,10 +170,7 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
       };
     },
     load,
-    login: (input?: {
-      returnTo?: string;
-      prompt?: "login" | "create" | "consent" | "select_account";
-    }) => action("login", input),
+    login: (input?: AuthLoginInput) => action("login", input),
     logout: () => action("logout"),
     dispose() {
       disposed = true;
@@ -191,3 +180,10 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
     },
   };
 }
+
+export type {
+  AuthClientAdapter,
+  AuthClientState,
+  AuthLoginInput,
+  AuthLoginResult,
+} from "@/utils/interface";

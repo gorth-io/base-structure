@@ -1,10 +1,14 @@
-import { z } from "zod";
-import { waitForAuthOperation } from "../auth/client/retry";
+import { waitForAuthOperation } from "@/modules/auth/client/retry";
 import type {
   DesktopRpcPolicy,
-  DesktopRpcRequest,
   DesktopRpcResponse,
-} from "./interface";
+} from "@/modules/desktop/interface";
+import { formatRpcFailure } from "@/utils/formatter";
+import type {
+  DesktopRpcHandlerOptions,
+  DesktopRpcTransportOptions,
+} from "@/utils/interface";
+import { z } from "zod";
 
 function rpcPolicy(options: DesktopRpcPolicy) {
   const origin = options.origin ?? "https://desktop.invalid";
@@ -59,26 +63,9 @@ function requestSchema(policy: ReturnType<typeof rpcPolicy>) {
           new TextEncoder().encode(input.body).length <= policy.maxBodyBytes),
     );
 }
-function failure(
-  status: number,
-  message: string,
-  code: number,
-  label: string,
-): DesktopRpcResponse {
-  return {
-    status,
-    body: JSON.stringify({
-      error: { message, code, data: { code: label, httpStatus: status } },
-    }),
-  };
-}
 
 /** Main-process packet validation. Supply tRPC's fetchRequestHandler as handle. */
-export function createDesktopRpcHandler(
-  options: DesktopRpcPolicy & {
-    handle(request: Request): Promise<Response>;
-  },
-) {
+export function createDesktopRpcHandler(options: DesktopRpcHandlerOptions) {
   const policy = rpcPolicy(options);
   const schema = requestSchema(policy);
   return async function handleRpcRequest(
@@ -86,7 +73,7 @@ export function createDesktopRpcHandler(
   ): Promise<DesktopRpcResponse> {
     const parsed = schema.safeParse(input);
     if (!parsed.success)
-      return failure(
+      return formatRpcFailure(
         400,
         "Invalid desktop RPC request.",
         -32600,
@@ -104,7 +91,7 @@ export function createDesktopRpcHandler(
       if (response.status < 200 || response.status > 599) throw new Error();
       return { status: response.status, body };
     } catch {
-      return failure(
+      return formatRpcFailure(
         500,
         "Desktop RPC unavailable.",
         -32603,
@@ -142,14 +129,7 @@ async function boundedResponseText(response: Response, limit: number) {
 }
 
 /** No network request: URL is protocol metadata passed to app-owned trusted IPC. */
-export function createDesktopRpcTransport(
-  options: DesktopRpcPolicy & {
-    request(
-      input: DesktopRpcRequest,
-      signal?: AbortSignal,
-    ): Promise<DesktopRpcResponse>;
-  },
-) {
+export function createDesktopRpcTransport(options: DesktopRpcTransportOptions) {
   const policy = rpcPolicy(options);
   const schema = requestSchema(policy);
   return async function rpcFetch(

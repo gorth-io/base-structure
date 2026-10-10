@@ -1,32 +1,13 @@
+import { AuthError } from "@/modules/auth/interface";
+import { createAuthPolicy } from "@/modules/auth/policy";
+import { createProofReplayStore } from "@/modules/auth/server/proof";
+import type { ResourceAuthOptions } from "@/utils/interface";
 import {
-  verifyAccessTokenRequest,
   isInsufficientScopeError,
+  verifyAccessTokenRequest,
   type ResourceRequestInput,
-  type VerifyAccessTokenRequestOptions,
 } from "better-auth/oauth2";
 import type { JWTPayload } from "jose";
-import { AuthError, type AuthPolicy } from "../interface";
-import { createAuthPolicy } from "../policy";
-import type { LogoutStorage, ProofStorage } from "./interface";
-import { createProofReplayStore } from "./proof";
-
-export interface ResourceAuthOptions {
-  /** Explicit issuer/audience, trusted JWKS URL or confidential introspection configuration. */
-  verification: Omit<VerifyAccessTokenRequestOptions, "dpop">;
-  proof: ProofStorage;
-  revocation: LogoutStorage;
-  /** UserInfo/introspection supplied by the app. Reject inactive identity, throw unavailable on outages. */
-  verifyActive(
-    claims: JWTPayload,
-    request: ResourceRequestInput,
-  ): Promise<void>;
-  onlineVerification: "always" | "sensitive";
-  /** Defaults true. A provider without sid must use onlineVerification: always. */
-  requireSid?: boolean;
-  allowLoopbackHttp?: boolean;
-  policy?: Partial<AuthPolicy>;
-  now?: () => number;
-}
 
 export function createResourceAuth(options: ResourceAuthOptions) {
   const now = options.now ?? Date.now;
@@ -146,15 +127,19 @@ export function createResourceAuth(options: ResourceAuthOptions) {
         // Unknown/JWKS/network failures are not a reason to log users out.
         throw new AuthError("unavailable");
       }
-      if (
-        await options.revocation.isRevoked({
-          subject: claims.sub!,
-          sid: claims.sid as string | undefined,
-          issuedAt: claims.iat! * 1000,
-          now: now(),
-        })
-      ) {
-        throw new AuthError("rejected");
+      try {
+        if (
+          await options.revocation.isRevoked({
+            subject: claims.sub!,
+            sid: claims.sid as string | undefined,
+            issuedAt: claims.iat! * 1000,
+            now: now(),
+          })
+        )
+          throw new AuthError("rejected");
+      } catch (error) {
+        if (error instanceof AuthError) throw error;
+        throw new AuthError("unavailable");
       }
       if (options.onlineVerification === "always" || input.sensitive) {
         try {
@@ -168,3 +153,5 @@ export function createResourceAuth(options: ResourceAuthOptions) {
     },
   };
 }
+
+export type { ResourceAuthOptions } from "@/utils/interface";

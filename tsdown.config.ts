@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import { defineConfig } from "tsdown"
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   clean: true,
@@ -12,6 +12,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/lib/*.ts",
+    "src/utils/*.ts",
     "src/modules/**/*.ts",
     "src/cores/**/*.ts",
   ],
@@ -21,4 +22,4 @@ export default defineConfig({
   target: "es2024",
   outDir: "dist",
   treeshake: true,
-})
+});

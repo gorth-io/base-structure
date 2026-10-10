@@ -1,22 +1,3 @@
-import type {
-  RealtimeChannel,
-  RealtimeChannelOptions,
-  REALTIME_SUBSCRIBE_STATES,
-  SupabaseClient,
-} from '@supabase/supabase-js'
-
-type SupabaseAnyClient = SupabaseClient<any, any, any>
-
-export type RealtimeUtils = {
-  createChannel: (topic: string, options?: RealtimeChannelOptions) => RealtimeChannel
-  subscribe: (
-    channel: RealtimeChannel,
-    callback?: (status: REALTIME_SUBSCRIBE_STATES, error?: Error) => void
-  ) => Promise<REALTIME_SUBSCRIBE_STATES>
-  removeChannel: (channel: RealtimeChannel) => Promise<'ok' | 'timed out' | 'error'>
-  removeAllChannels: () => Promise<('ok' | 'timed out' | 'error')[]>
-}
-
 // export function createCommonRealtimeUtils(client: SupabaseAnyClient): RealtimeUtils {
 //   return {
 //     createChannel(topic: string, options?: RealtimeChannelOptions) {
@@ -54,3 +35,5 @@ export type RealtimeUtils = {
 //     // },
 //   }
 // }
+
+export type { RealtimeUtils } from "@/utils/interface";

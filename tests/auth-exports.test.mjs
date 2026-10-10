@@ -183,3 +183,31 @@ test("built SDK session adapter works through ESM and CJS without an SDK depende
     state.dispose();
   }
 });
+
+test("new utils exports resolve in ESM/CJS and type contracts have no runtime dependencies", async () => {
+  for (const module of [
+    await import("@gorth/structure/utils/formatter"),
+    require("@gorth/structure/utils/formatter"),
+  ]) {
+    assert.equal(module.formatEpochMilliseconds(new Date(100)), 100);
+    assert.equal(module.normalizeAccelerator("Ctrl + a"), "Ctrl+A");
+  }
+  const types = await import("@gorth/structure/utils/interface");
+  assert.deepEqual(Object.keys(types), []);
+  assert.deepEqual(
+    Object.keys(require("@gorth/structure/utils/interface")),
+    [],
+  );
+  for (const module of [
+    await import("@gorth/structure/modules/auth/client"),
+    require("@gorth/structure/modules/auth/client"),
+    await import("@gorth/structure/modules/auth/server"),
+    require("@gorth/structure/modules/auth/server"),
+  ]) {
+    const freshness = module.createAuthFreshnessPolicy({}, () => 100);
+    assert.equal(
+      freshness({ verifiedAt: 99, accessExpiresAt: 101 }).expired,
+      false,
+    );
+  }
+});

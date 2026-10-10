@@ -1,18 +1,8 @@
+import { AuthError } from "@/modules/auth/interface";
+import { createAuthPolicy } from "@/modules/auth/policy";
+import type { VerifiedLogout } from "@/modules/auth/server/interface";
+import type { LogoutVerifierOptions } from "@/utils/interface";
 import { jwtVerify, type JWTVerifyGetKey } from "jose";
-import { AuthError, type AuthPolicy } from "../interface";
-import { createAuthPolicy } from "../policy";
-import type { LogoutStorage, VerifiedLogout } from "./interface";
-
-export interface LogoutVerifierOptions {
-  issuer: string;
-  clientId: string;
-  getVerificationKey(): Promise<JWTVerifyGetKey>;
-  storage: LogoutStorage;
-  algorithms?: readonly ("RS256" | "ES256" | "EdDSA")[];
-  requireSid?: boolean;
-  policy?: Partial<AuthPolicy>;
-  now?: () => number;
-}
 
 export function createLogoutVerifier(options: LogoutVerifierOptions) {
   const policy = createAuthPolicy(options.policy);
@@ -96,3 +86,5 @@ export function createLogoutVerifier(options: LogoutVerifierOptions) {
   }
   return { verify, handle };
 }
+
+export type { LogoutVerifierOptions } from "@/utils/interface";

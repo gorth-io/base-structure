@@ -1,65 +1,12 @@
-import {
-  isAxiosError,
-  type AxiosInstance,
-  type AxiosRequestConfig,
-  type AxiosResponse,
-  type Method,
-  type ResponseType,
-} from "axios";
-import type { ZodType } from "zod";
-import { createAuthRetry } from "../auth/client/retry";
-import { CallerError, normalizeCallerError } from "./error";
-import { createFetcher } from "./fetcher";
-
-export type CallerResponseHandler<Data> =
-  | "json"
-  | "text"
-  | "blob"
-  | "arrayBuffer"
-  | "stream"
-  | "content-type"
-  | ((response: AxiosResponse<unknown>) => Data | Promise<Data>);
-export interface CallerToastOptions<Data> {
-  success?: string | ((data: Data) => string);
-  error?: string | ((error: CallerError) => string);
-}
-export interface CallerRequestOptions<
-  Data = unknown,
-  Body = unknown,
-  Params = Record<string, unknown>,
-> extends Omit<
-  AxiosRequestConfig<Body>,
-  "url" | "method" | "data" | "params" | "auth" | "baseURL" | "signal"
-> {
-  url: string;
-  method?: Method;
-  body?: Body;
-  params?: Params;
-  query?: Params;
-  baseURL?: string | null;
-  signal?: AbortSignal;
-  auth?: boolean;
-  unwrapData?: boolean;
-  schema?: ZodType<Data>;
-  responseHandler?: CallerResponseHandler<Data>;
-  cache?: RequestCache;
-  credentials?: RequestCredentials;
-  redirect?: RequestRedirect;
-  /** Mutations must explicitly opt into replay after a 401 (idempotent/auth-before-write). */
-  retryUnsafe?: boolean;
-  toast?: boolean | CallerToastOptions<Data>;
-  onSuccess?(data: Data): void | Promise<void>;
-  onError?(error: CallerError): void | Promise<void>;
-}
-export interface CallerOptions {
-  client: AxiosInstance;
-  refresh?(signal: AbortSignal): Promise<boolean>;
-  /** App supplies UI notification implementation. No UI dependency in this module. */
-  notify?(kind: "success" | "error", message: string): void;
-  /** Explicit sanitizer for trusted endpoint errors; never receive Axios config. */
-  mapError?(error: CallerError, responseData: unknown): CallerError;
-  canRetry?(url: string): boolean;
-}
+import { createAuthRetry } from "@/modules/auth/client/retry";
+import { CallerError, normalizeCallerError } from "@/modules/http/error";
+import { createFetcher } from "@/modules/http/fetcher";
+import type {
+  CallerMethodOptions,
+  CallerOptions,
+  CallerRequestOptions,
+} from "@/utils/interface";
+import { isAxiosError, type ResponseType } from "axios";
 
 export function createCaller(options: CallerOptions) {
   const fetcher = createFetcher(options.client);
@@ -177,22 +124,18 @@ export function createCaller(options: CallerOptions) {
     }
   }
 
-  type RequestOptions<Data, Body, Params> = Omit<
-    CallerRequestOptions<Data, Body, Params>,
-    "url" | "method" | "body"
-  >;
   const http = {
     request: caller,
     get<Data = unknown, Params = Record<string, unknown>>(
       url: string,
-      input: RequestOptions<Data, never, Params> = {},
+      input: CallerMethodOptions<Data, never, Params> = {},
     ) {
       return caller<Data, never, Params>({ ...input, url, method: "GET" });
     },
     post<Data = unknown, Body = unknown, Params = Record<string, unknown>>(
       url: string,
       body?: Body,
-      input: RequestOptions<Data, Body, Params> = {},
+      input: CallerMethodOptions<Data, Body, Params> = {},
     ) {
       return caller<Data, Body, Params>({
         ...input,
@@ -204,14 +147,14 @@ export function createCaller(options: CallerOptions) {
     put<Data = unknown, Body = unknown, Params = Record<string, unknown>>(
       url: string,
       body?: Body,
-      input: RequestOptions<Data, Body, Params> = {},
+      input: CallerMethodOptions<Data, Body, Params> = {},
     ) {
       return caller<Data, Body, Params>({ ...input, url, method: "PUT", body });
     },
     patch<Data = unknown, Body = unknown, Params = Record<string, unknown>>(
       url: string,
       body?: Body,
-      input: RequestOptions<Data, Body, Params> = {},
+      input: CallerMethodOptions<Data, Body, Params> = {},
     ) {
       return caller<Data, Body, Params>({
         ...input,
@@ -231,7 +174,7 @@ export function createCaller(options: CallerOptions) {
     },
     head<Data = unknown, Params = Record<string, unknown>>(
       url: string,
-      input: RequestOptions<Data, never, Params> = {},
+      input: CallerMethodOptions<Data, never, Params> = {},
     ) {
       return caller<Data, never, Params>({ ...input, url, method: "HEAD" });
     },
@@ -252,3 +195,10 @@ export function createCaller(options: CallerOptions) {
     dispose: () => retry?.dispose(),
   };
 }
+
+export type {
+  CallerOptions,
+  CallerRequestOptions,
+  CallerResponseHandler,
+  CallerToastOptions,
+} from "@/utils/interface";

@@ -1,14 +1,17 @@
-export { createDesktopRpcHandler, createDesktopRpcTransport } from "./rpc";
-export {
-  normalizeAccelerator,
-  shortcutIdentity,
-  createShortcutValidator,
-} from "./shortcut";
 export type {
+  DesktopRpcPolicy,
   DesktopRpcRequest,
   DesktopRpcResponse,
-  DesktopRpcPolicy,
-  ShortcutDefinition,
   Shortcut,
-} from "./interface";
-export type { ShortcutPolicy } from "./shortcut";
+  ShortcutDefinition,
+} from "@/modules/desktop/interface";
+export {
+  createDesktopRpcHandler,
+  createDesktopRpcTransport,
+} from "@/modules/desktop/rpc";
+export {
+  createShortcutValidator,
+  normalizeAccelerator,
+  shortcutIdentity,
+} from "@/modules/desktop/shortcut";
+export type { ShortcutPolicy } from "@/modules/desktop/shortcut";

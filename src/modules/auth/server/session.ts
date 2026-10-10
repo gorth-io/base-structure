@@ -1,24 +1,22 @@
-import { AuthError, type AuthPolicy, type PublicSession } from "../interface";
-import { createAuthPolicy } from "../policy";
-import { fingerprintAuthValue, randomAuthValue } from "./crypto";
+import { AuthError } from "@/modules/auth/interface";
+import {
+  createAuthFreshnessPolicy,
+  createAuthPolicy,
+} from "@/modules/auth/policy";
+import {
+  fingerprintAuthValue,
+  randomAuthValue,
+} from "@/modules/auth/server/crypto";
 import type {
-  IdentityAdapter,
-  LogoutStorage,
-  OAuthProvider,
-  SessionStorage,
   SessionCredentials,
   StoredSession,
   VerifiedLogin,
-} from "./interface";
-
-export interface SessionServiceOptions<User> {
-  provider: OAuthProvider;
-  storage: SessionStorage<User>;
-  revocation: LogoutStorage;
-  identity: IdentityAdapter<User>;
-  policy?: Partial<AuthPolicy>;
-  now?: () => number;
-}
+} from "@/modules/auth/server/interface";
+import {
+  formatPublicSession,
+  formatSessionCredentials,
+} from "@/utils/formatter";
+import type { AuthReadInput, SessionServiceOptions } from "@/utils/interface";
 
 function validHandle(handle: string): boolean {
   return /^[A-Za-z0-9_-]{43}$/.test(handle);
@@ -29,13 +27,8 @@ export function createSessionService<User>(
 ) {
   const policy = createAuthPolicy(options.policy);
   const now = options.now ?? Date.now;
+  const freshness = createAuthFreshnessPolicy(policy, now);
   const { storage, provider, identity } = options;
-  const publicSession = (
-    session: StoredSession<User>,
-  ): PublicSession<User> => ({
-    user: session.user,
-    expiresAt: session.expiresAt,
-  });
 
   async function create(login: VerifiedLogin) {
     if (
@@ -66,12 +59,12 @@ export function createSessionService<User>(
     };
     if (session.expiresAt <= now() || !(await storage.insert(session)))
       throw new AuthError("rejected");
-    return { handle, session: publicSession(session) };
+    return { handle, session: formatPublicSession(session) };
   }
 
   async function read(
     handle: string,
-    input: { fresh?: boolean; signal?: AbortSignal } = {},
+    input: AuthReadInput = {},
   ): Promise<StoredSession<User> | null> {
     if (!validHandle(handle)) return null;
     const key = await fingerprintAuthValue(handle);
@@ -106,7 +99,11 @@ export function createSessionService<User>(
         next = { ...next, revision: randomAuthValue() };
         if (!(await storage.replace(key, previous.revision, next))) {
           // A logout/delete wins over the in-flight request. No upsert resurrection.
-          await provider.revoke(next.credentials).catch(() => {});
+          try {
+            await provider.revoke(next.credentials);
+          } catch {
+            /* A failed remote revoke cannot resurrect the removed session. */
+          }
           throw new AuthError("rejected");
         }
         session = next;
@@ -137,17 +134,22 @@ export function createSessionService<User>(
 
       try {
         if (
-          session.credentials.accessExpiresAt <=
-          now() + policy.refreshLeewayMs
+          freshness({
+            verifiedAt: session.verifiedAt,
+            accessExpiresAt: session.credentials.accessExpiresAt,
+          }).refresh
         ) {
           if (session.credentials.refreshToken) await rotate();
           else if (session.credentials.accessExpiresAt <= now())
             throw new AuthError("rejected");
         }
         if (
-          input.fresh ||
           rotated ||
-          session.verifiedAt + policy.identityMaxAgeMs <= now()
+          freshness({
+            verifiedAt: session.verifiedAt,
+            accessExpiresAt: session.credentials.accessExpiresAt,
+            fresh: input.fresh,
+          }).verifyIdentity
         ) {
           let profile;
           try {
@@ -229,29 +231,23 @@ export function createSessionService<User>(
   }
   return {
     create: (login: VerifiedLogin) => safe(() => create(login)),
-    get: (handle: string, input?: { fresh?: boolean; signal?: AbortSignal }) =>
+    get: (handle: string, input?: AuthReadInput) =>
       safe(async () => {
         const session = await read(handle, input);
-        return session ? publicSession(session) : null;
+        return session ? formatPublicSession(session) : null;
       }),
     /** Same authoritative locked read/refresh path as get; trusted runtime only. */
     credentials: (
       handle: string,
-      input?: { fresh?: boolean; signal?: AbortSignal },
+      input?: AuthReadInput,
     ): Promise<SessionCredentials<User> | null> =>
       safe(async () => {
         const session = await read(handle, input);
-        return session
-          ? {
-              user: session.user,
-              subject: session.subject,
-              sid: session.sid,
-              credentials: { ...session.credentials },
-              expiresAt: session.expiresAt,
-            }
-          : null;
+        return session ? formatSessionCredentials(session) : null;
       }),
     logout: (handle: string, signal?: AbortSignal) =>
       safe(() => logout(handle, signal)),
   };
 }
+
+export type { SessionServiceOptions } from "@/utils/interface";

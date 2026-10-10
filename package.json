@@ -22,6 +22,11 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./utils/*": {
+      "types": "./dist/utils/*.d.ts",
+      "import": "./dist/utils/*.js",
+      "require": "./dist/utils/*.cjs"
+    },
     "./modules/http": {
       "types": "./dist/modules/http/index.d.ts",
       "import": "./dist/modules/http/index.js",
@@ -90,6 +95,9 @@
   },
   "typesVersions": {
     "*": {
+      "utils/*": [
+        "dist/utils/*.d.ts"
+      ],
       "modules/http": [
         "dist/modules/http/index.d.ts"
       ],

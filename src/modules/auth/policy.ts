@@ -1,4 +1,35 @@
-import { AuthError, type AuthPolicy } from "./interface";
+import { AuthError, type AuthPolicy } from "@/modules/auth/interface";
+import type {
+  AuthCookieInput,
+  AuthFreshness,
+  AuthFreshnessInput,
+} from "@/utils/interface";
+
+/** Shared decisions only. Apps still perform authoritative storage/revocation checks. */
+export function createAuthFreshnessPolicy(
+  overrides: Partial<AuthPolicy> = {},
+  now: () => number = Date.now,
+) {
+  const policy = createAuthPolicy(overrides);
+  return function authFreshness(input: AuthFreshnessInput): AuthFreshness {
+    const time = now();
+    if (
+      ![time, input.accessExpiresAt, input.verifiedAt].every(Number.isFinite) ||
+      time < 0 ||
+      input.accessExpiresAt < 0 ||
+      input.verifiedAt < 0
+    )
+      throw new AuthError("rejected");
+    return {
+      expired: input.accessExpiresAt <= time,
+      refresh: input.accessExpiresAt <= time + policy.refreshLeewayMs,
+      verifyIdentity:
+        input.fresh === true ||
+        input.verifiedAt > time ||
+        input.verifiedAt + policy.identityMaxAgeMs <= time,
+    };
+  };
+}
 
 export function createAuthPolicy(
   overrides: Partial<AuthPolicy> = {},
@@ -65,11 +96,7 @@ export function assertMutationOrigin(
   }
 }
 
-export function authCookieOptions(options: {
-  secure: boolean;
-  maxAgeSeconds: number;
-  path?: string;
-}) {
+export function authCookieOptions(options: AuthCookieInput) {
   if (
     !Number.isSafeInteger(options.maxAgeSeconds) ||
     options.maxAgeSeconds < 0 ||

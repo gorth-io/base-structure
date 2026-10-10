@@ -1,6 +1,6 @@
-import type { SupabaseClientOptions } from '@supabase/supabase-js'
-import { createBrowserClient } from '@supabase/ssr'
-import { DatabaseSchema, DefaultSchema } from "@/lib/interface"
+import type { DatabaseSchema, DefaultSchema } from "@/utils/interface";
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClientOptions } from "@supabase/supabase-js";
 
 export function createNextClient<
   Database = any,
@@ -8,11 +8,11 @@ export function createNextClient<
 >(
   url: string,
   publishableKey: string,
-  options?: SupabaseClientOptions<SchemaName>
+  options?: SupabaseClientOptions<SchemaName>,
 ) {
   return createBrowserClient<Database, SchemaName>(
     url,
     publishableKey,
-    options
-  )
+    options,
+  );
 }
