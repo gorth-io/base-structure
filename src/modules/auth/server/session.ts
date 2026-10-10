@@ -6,6 +6,7 @@ import type {
   LogoutStorage,
   OAuthProvider,
   SessionStorage,
+  SessionCredentials,
   StoredSession,
   VerifiedLogin,
 } from "./interface";
@@ -68,10 +69,10 @@ export function createSessionService<User>(
     return { handle, session: publicSession(session) };
   }
 
-  async function get(
+  async function read(
     handle: string,
     input: { fresh?: boolean; signal?: AbortSignal } = {},
-  ): Promise<PublicSession<User> | null> {
+  ): Promise<StoredSession<User> | null> {
     if (!validHandle(handle)) return null;
     const key = await fingerprintAuthValue(handle);
     return storage.withLock(key, async () => {
@@ -189,7 +190,7 @@ export function createSessionService<User>(
           }))
         )
           return null;
-        return publicSession(session);
+        return session;
       } catch (error) {
         if (error instanceof AuthError && error.code === "rejected") {
           await storage.remove(key, session.revision);
@@ -229,7 +230,27 @@ export function createSessionService<User>(
   return {
     create: (login: VerifiedLogin) => safe(() => create(login)),
     get: (handle: string, input?: { fresh?: boolean; signal?: AbortSignal }) =>
-      safe(() => get(handle, input)),
+      safe(async () => {
+        const session = await read(handle, input);
+        return session ? publicSession(session) : null;
+      }),
+    /** Same authoritative locked read/refresh path as get; trusted runtime only. */
+    credentials: (
+      handle: string,
+      input?: { fresh?: boolean; signal?: AbortSignal },
+    ): Promise<SessionCredentials<User> | null> =>
+      safe(async () => {
+        const session = await read(handle, input);
+        return session
+          ? {
+              user: session.user,
+              subject: session.subject,
+              sid: session.sid,
+              credentials: { ...session.credentials },
+              expiresAt: session.expiresAt,
+            }
+          : null;
+      }),
     logout: (handle: string, signal?: AbortSignal) =>
       safe(() => logout(handle, signal)),
   };

@@ -1,6 +1,6 @@
 # Shared application authentication
 
-This module standardizes **relying-party** authentication against Gorth SSO. It
+The server OAuth engine standardizes **relying-party** authentication against Gorth SSO. It
 does not start another Better Auth authority, read application environment
 variables, open a database, start an HTTP listener, mount routes, or import
 Next.js/Electron. Existing `cores/auth/*` exports are unchanged.
@@ -28,9 +28,15 @@ serialize those results over HTTP or IPC. Only `PublicSession<User>` belongs in 
 Pass explicit configuration from the app's existing environment module. No
 factory derives endpoints, reads secrets, or falls back to environment variables.
 `OAuthConfig` contains the exact issuer, client ID, registered redirect and
-post-logout redirect, fixed endpoints, exact endpoint origins, scopes and optional
+optional post-logout redirect, fixed endpoints, exact endpoint origins, scopes and optional
 RFC 8707 resource indicators. The issuer may differ from the API endpoint origin,
 provided the app explicitly lists the trusted API origin.
+
+`endpoints.endSession` and `postLogoutRedirectUri` are optional as a pair.
+Apps with local-only logout should omit both. `sessions.logout()` does not use
+either; `provider.logoutUrl()` throws `invalid_configuration` if the pair is
+absent. Calling that method is an explicit choice to initiate provider-wide
+logout, not the default app logout behavior.
 
 Provider endpoints require HTTPS. `allowLoopbackHttp: true` permits HTTP only on
 localhost/127.0.0.1/IPv6 loopback, never arbitrary hosts. This is an explicit local
@@ -50,7 +56,7 @@ client. The **resource verifier** can receive Bearer and DPoP requests.
 `createAuthPolicy()` defaults:
 
 - App-session lifetime: 7 days, absolute (not sliding).
-- PKCE transaction lifetime: 5 minutes; maximum 10 minutes.
+- PKCE transaction lifetime: 120 seconds by default; maximum configurable 10 minutes.
 - Identity freshness cache: 120 seconds; `get(handle, { fresh: true })` bypasses it.
 - Refresh leeway: 30 seconds; clock tolerance: 5 seconds.
 - Logout JWT age/lifetime: maximum 120 seconds.
@@ -139,6 +145,11 @@ is checked. `open` returns **unknown**: validate using `loginTransactionSchema`,
 `sessions.get(handle)` hashes the opaque handle, reads the authoritative store,
 validates expiry/binding/revocation/local status, and refreshes if required.
 `sessions.get(handle, { fresh: true })` forces online identity validation.
+`sessions.credentials(handle, { fresh: true })` performs the same authoritative
+locked operation but returns credentials for server/main-process use only. Never
+serialize that result into an HTTP/IPC response or UI store. See
+[shared modules](./modules.md) for HTTP/retry, discovery/session binding, BFF and
+desktop RPC/shortcut extraction APIs.
 Refresh rotation is committed **before** UserInfo; a transient UserInfo failure
 does not lose the newly issued refresh token. Rejection ends the local session;
 availability errors remain errors, not an authenticated or anonymous fallback.

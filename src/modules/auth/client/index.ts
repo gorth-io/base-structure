@@ -7,6 +7,14 @@ import { resolveReturnPath } from "../policy";
 
 export { AuthError } from "../interface";
 export type { AuthIdentity, AuthErrorCode, PublicSession } from "../interface";
+export { createAuthRetry } from "./retry";
+export type { AuthRetryOptions, AuthRetryInput } from "./retry";
+export { createSessionAuthAdapter } from "./session-adapter";
+export type {
+  SessionAuthAdapterOptions,
+  SessionSdkResult,
+  SessionSdkSession,
+} from "./session-adapter";
 
 export interface AuthClientAdapter<User> {
   /** Same-origin app endpoint on web; trusted preload IPC on desktop. No OAuth tokens. */
@@ -69,7 +77,9 @@ export function createAuthClient<User>(adapter: AuthClientAdapter<User>) {
     if (actionFlight) return actionFlight.then(() => state.session);
     if (readFlight) return readFlight;
     const { signal, version } = reset();
-    publish({ status: "loading", session: null, busy: true, error: null });
+    // Background revalidation must not flash an authenticated view to signed-out.
+    // The app/API still verifies authorization on every protected operation.
+    publish({ ...state, busy: true, error: null });
     const flight = Promise.resolve()
       .then(() => adapter.read(signal))
       .then(

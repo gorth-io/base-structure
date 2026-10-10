@@ -209,6 +209,7 @@ test("client loading is not anonymous; sanitized errors; dispose stops stale upd
 });
 
 test("policy bounds, mutation origins, internal redirects and host-only cookies", () => {
+  assert.equal(createAuthPolicy().transactionMaxAgeMs, 120_000);
   assert.equal(createAuthPolicy().identityMaxAgeMs, 120_000);
   assert.throws(() => createAuthPolicy({ revocationRetentionMs: 120_000 }));
   assert.throws(() => createAuthPolicy({ clockToleranceSeconds: 120 }));
@@ -241,6 +242,27 @@ test("policy bounds, mutation origins, internal redirects and host-only cookies"
     path: "/",
     maxAge: 0,
   });
+});
+
+test("client retains the authenticated snapshot during background revalidation", async () => {
+  const pending = deferred<{ user: string; expiresAt: number } | null>();
+  let reads = 0;
+  const client = createAuthClient<string>({
+    async read() {
+      return reads++ === 0 ? { user: "current-user", expiresAt: 999 } : pending.promise;
+    },
+    async login() {},
+    async logout() {},
+  });
+  await client.load();
+  const refresh = client.load();
+  assert.equal(client.getSnapshot().status, "authenticated");
+  assert.equal(client.getSnapshot().session?.user, "current-user");
+  assert.equal(client.getSnapshot().busy, true);
+  pending.resolve(null);
+  await refresh;
+  assert.equal(client.getSnapshot().status, "anonymous");
+  assert.equal(client.getSnapshot().session, null);
 });
 
 test("cipher is purpose/audience/key bound and rejects expired/tampered ciphertext", async () => {

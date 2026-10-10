@@ -5,7 +5,7 @@ export function createAuthPolicy(
 ): Readonly<AuthPolicy> {
   const policy: AuthPolicy = {
     sessionMaxAgeMs: 7 * 86_400_000,
-    transactionMaxAgeMs: 300_000,
+    transactionMaxAgeMs: 120_000,
     identityMaxAgeMs: 120_000,
     refreshLeewayMs: 30_000,
     clockToleranceSeconds: 5,

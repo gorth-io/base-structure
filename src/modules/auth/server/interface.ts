@@ -5,13 +5,14 @@ export interface OAuthConfig {
   issuer: string;
   clientId: string;
   redirectUri: string;
-  postLogoutRedirectUri: string;
+  /** Only needed for explicitly requested provider-wide logout. */
+  postLogoutRedirectUri?: string;
   endpoints: {
     authorization: string;
     token: string;
     userinfo: string;
     revocation: string;
-    endSession: string;
+    endSession?: string;
   };
   /** Exact trusted origins, including a separate SSO API origin if applicable. */
   endpointOrigins: readonly string[];
@@ -103,6 +104,15 @@ export interface StoredSession<User> {
   createdAt: number;
   expiresAt: number;
   verifiedAt: number;
+}
+
+/** Trusted server/main process only. Never serialize over an app endpoint or IPC. */
+export interface SessionCredentials<User> {
+  user: User;
+  subject: string;
+  sid?: string;
+  credentials: OAuthCredentials;
+  expiresAt: number;
 }
 
 export interface SessionStorage<User> {

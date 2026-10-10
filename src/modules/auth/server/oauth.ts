@@ -57,11 +57,15 @@ export function validateOAuthConfig(input: OAuthConfig): Readonly<OAuthConfig> {
       throw new AuthError("invalid_configuration");
   }
   for (const value of Object.values(input.endpoints)) {
+    if (value === undefined) continue;
     const url = trustedUrl(value, local);
     if (url.search || !input.endpointOrigins.includes(url.origin))
       throw new AuthError("invalid_configuration");
   }
+  if (!!input.endpoints.endSession !== !!input.postLogoutRedirectUri)
+    throw new AuthError("invalid_configuration");
   for (const value of [input.redirectUri, input.postLogoutRedirectUri]) {
+    if (value === undefined) continue;
     if (trustedUrl(value, local).search)
       throw new AuthError("invalid_configuration");
   }
@@ -462,6 +466,8 @@ export function createOAuthProvider(options: OAuthOptions) {
   }
 
   function logoutUrl() {
+    if (!config.endpoints.endSession || !config.postLogoutRedirectUri)
+      throw new AuthError("invalid_configuration");
     const url = new URL(config.endpoints.endSession);
     url.search = new URLSearchParams({
       client_id: config.clientId,

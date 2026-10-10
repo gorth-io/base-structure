@@ -1,6 +1,6 @@
 {
   "name": "@gorth/structure",
-  "version": "3.1.4",
+  "version": "3.1.5",
   "description": "",
   "type": "module",
   "author": "Gorthenburg",
@@ -22,6 +22,16 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./modules/http": {
+      "types": "./dist/modules/http/index.d.ts",
+      "import": "./dist/modules/http/index.js",
+      "require": "./dist/modules/http/index.cjs"
+    },
+    "./modules/desktop": {
+      "types": "./dist/modules/desktop/index.d.ts",
+      "import": "./dist/modules/desktop/index.js",
+      "require": "./dist/modules/desktop/index.cjs"
+    },
     "./modules/auth/client": {
       "types": "./dist/modules/auth/client/index.d.ts",
       "import": "./dist/modules/auth/client/index.js",
@@ -80,6 +90,12 @@
   },
   "typesVersions": {
     "*": {
+      "modules/http": [
+        "dist/modules/http/index.d.ts"
+      ],
+      "modules/desktop": [
+        "dist/modules/desktop/index.d.ts"
+      ],
       "modules/auth/client": [
         "dist/modules/auth/client/index.d.ts"
       ],
@@ -108,11 +124,13 @@
   },
   "files": [
     "dist",
-    "docs/auth.md"
+    "docs/auth.md",
+    "docs/modules.md"
   ],
   "scripts": {
     "build": "tsdown --minify",
-    "prepack": "pnpm build",
+    "prepack": "pnpm verify",
+    "verify": "pnpm typecheck && pnpm test:types && pnpm test && pnpm build && pnpm test:exports",
     "dev": "tsdown --format esm,cjs --dts --out-dir dist --watch",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
@@ -126,7 +144,7 @@
     "@ably/ai-transport": "^0.9.0",
     "@ably/chat": "^1.4.0",
     "@ably/spaces": "^0.5.2",
-    "@better-auth/infra": "^0.4.15",
+    "@better-auth/infra": "^0.4.17",
     "@better-auth/oauth-provider": "^1.7.7",
     "@better-auth/scim": "^1.7.7",
     "@better-auth/sso": "^1.7.7",
@@ -146,11 +164,11 @@
     "postgres": "^3.4.9",
     "svix": "^2.8.0",
     "tsx": "^4.23.15",
-    "uuid": "^14.0.2",
+    "uuid": "^14.0.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
     "eslint": "^9.39.5",
     "prettier": "^3.9.9",

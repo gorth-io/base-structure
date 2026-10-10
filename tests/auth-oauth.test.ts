@@ -44,6 +44,26 @@ const config: OAuthConfig = {
   },
 };
 
+test("local-only OAuth logout needs no end-session configuration", async () => {
+  const { endSession: _endSession, ...endpoints } = config.endpoints;
+  const { postLogoutRedirectUri: _redirect, ...localConfig } = config;
+  const local = { ...localConfig, endpoints };
+  assert.doesNotThrow(() => validateOAuthConfig(local));
+  const fixture = oauthFixture({ config: local });
+  assert.throws(() => fixture.provider.logoutUrl(), {
+    code: "invalid_configuration",
+  });
+  assert.doesNotThrow(() => validateOAuthConfig(config));
+  assert.throws(
+    () =>
+      validateOAuthConfig({
+        ...local,
+        postLogoutRedirectUri: config.postLogoutRedirectUri,
+      }),
+    { code: "invalid_configuration" },
+  );
+});
+
 async function jwt(claims: Record<string, unknown>, type = "JWT") {
   return new SignJWT(claims)
     .setProtectedHeader({ alg: "ES256", kid: "test", typ: type })
@@ -57,6 +77,7 @@ async function jwt(claims: Record<string, unknown>, type = "JWT") {
 function oauthFixture(
   input: {
     config?: OAuthConfig;
+    now?: () => number;
     changeClaims?: (claims: Record<string, unknown>) => Record<string, unknown>;
   } = {},
 ) {
@@ -65,6 +86,7 @@ function oauthFixture(
   let nonce = "";
   let observedBody: URLSearchParams | undefined;
   const provider = createOAuthProvider({
+    now: input.now,
     config: input.config ?? config,
     getVerificationKey: async () => keyResolver,
     loginStorage: {
@@ -155,6 +177,19 @@ test("PKCE login uses separate random state/nonce, verified identity and resourc
     { code: "rejected" },
   );
   assert.equal(fixture.requests(), 1);
+});
+
+test("OAuth state expires after 120 seconds and cannot exchange an expired code", async () => {
+  let now = Date.now();
+  const fixture = oauthFixture({ now: () => now });
+  const { transaction, callback } = await fixture.start();
+  assert.equal(transaction.expiresAt - now, 120_000);
+  now += 120_000;
+  await assert.rejects(
+    fixture.provider.finishLogin(callback.href, transaction),
+    { code: "rejected" },
+  );
+  assert.equal(fixture.requests(), 0);
 });
 
 test("callback rejects wrong state/issuer/origin and duplicate parameters before exchange", async () => {
@@ -314,10 +349,15 @@ test("logout verification is signed, typed, issuer/audience-bound and atomic/ide
     1,
     "verify alone must not consume receipt",
   );
-  assert.deepEqual(
-    await Promise.all([verifier.handle(token), verifier.handle(token)]),
-    [{ applied: true }, { applied: false }],
-  );
+  const results = await Promise.all([
+    verifier.handle(token),
+    verifier.handle(token),
+  ]);
+  // Cryptographic verification can finish in either order; exactly one wins.
+  assert.deepEqual(results.map((result) => result.applied).sort(), [
+    false,
+    true,
+  ]);
   assert.equal(await service.get(handle), null);
 });
 
