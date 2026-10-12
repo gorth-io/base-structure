@@ -10,7 +10,7 @@ import {
 import { createResourceAuth } from "../src/modules/auth/server/resource";
 import { AuthError } from "../src/modules/auth/interface";
 import type { ResourceAuthOptions } from "../src/modules/auth/server/resource";
-import { sessionFixture } from "./auth.fixture";
+import { revocationFixture } from "./auth.fixture";
 
 test("resource verifier enforces audience/scopes, DPoP binding and shared replay storage", async () => {
   const signing = await generateKeyPair("ES256");
@@ -25,7 +25,7 @@ test("resource verifier enforces audience/scopes, DPoP binding and shared replay
       headers: { "Content-Type": "application/json" },
     });
   try {
-    const fixture = sessionFixture();
+    const fixture = revocationFixture();
     const proofs = new Set<string>();
     let online = 0;
     const options: ResourceAuthOptions = {
@@ -139,7 +139,7 @@ test("resource verifier enforces audience/scopes, DPoP binding and shared replay
 });
 
 test("resource config disallows regex identities, insecure endpoints and symmetric algorithms", () => {
-  const fixture = sessionFixture();
+  const fixture = revocationFixture();
   const options: ResourceAuthOptions = {
     verification: {
       jwksUrl: "https://sso.example/jwks",

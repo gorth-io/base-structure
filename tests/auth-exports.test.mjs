@@ -7,62 +7,60 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
-test("published auth entrypoints expose both ESM and CommonJS APIs", async () => {
-  for (const [entry, factory] of [
-    ["client", "createAuthClient"],
-    ["server", "createSessionService"],
-    ["desktop", "createDesktopLogin"],
-  ]) {
+test("native auth helpers expose ESM/CommonJS without legacy engines", async () => {
+  for (const entry of ["client", "server"]) {
     const path = "@gorth/structure/modules/auth/" + entry;
-    assert.equal(typeof (await import(path))[factory], "function");
-    assert.equal(typeof require(path)[factory], "function");
-    assert.equal(
-      typeof (await import(path)).createOAuthProvider,
-      entry === "server" ? "function" : "undefined",
-    );
-  }
-});
-
-test("all extracted infrastructure factories are available through public ESM/CJS entries", async () => {
-  for (const [path, factories] of [
-    [
-      "@gorth/structure/modules/http",
-      [
-        "createFetcher",
-        "toWebResponse",
-        "createCaller",
-        "normalizeCallerError",
-      ],
-    ],
-    [
-      "@gorth/structure/modules/desktop",
-      [
-        "createDesktopRpcHandler",
-        "createDesktopRpcTransport",
-        "createShortcutValidator",
-      ],
-    ],
-    [
-      "@gorth/structure/modules/auth/client",
-      ["createAuthRetry", "createSessionAuthAdapter"],
-    ],
-    [
-      "@gorth/structure/modules/auth/server",
-      [
-        "createSessionBoundTransport",
-        "createOidcDiscovery",
+    for (const module of [await import(path), require(path)]) {
+      for (const name of entry === "client"
+        ? ["createAuthRetry"]
+        : [
+            "AuthError",
+            "createIdentityCache",
+            "createOAuthIdentityValidator",
+            "createSessionGrantGuard",
+            "matchesAuthRevocation",
+            "createResourceAuth",
+            "createLogoutVerifier",
+            "fingerprintAuthValue",
+            "assertMutationOrigin",
+          ])
+        assert.equal(typeof module[name], "function");
+      for (const retired of [
+        "createOAuthProvider",
+        "createSessionService",
+        "createAuthClient",
+        "createSessionAuthAdapter",
         "createBffSigner",
         "createBffVerifier",
-      ],
-    ],
-  ]) {
-    const esm = await import(path),
-      cjs = require(path);
-    for (const factory of factories) {
-      assert.equal(typeof esm[factory], "function", path + ":" + factory);
-      assert.equal(typeof cjs[factory], "function", path + ":" + factory);
+        "createAuthCipher",
+        "createOidcDiscovery",
+        "createSessionBoundTransport",
+      ])
+        assert.equal(module[retired], undefined);
     }
   }
+  assert.throws(() => require("@gorth/structure/modules/auth/desktop"));
+});
+
+test("official OAuth SDK exports remain the SDK implementation", async () => {
+  const sdk = await import("better-auth/oauth2");
+  const published = await import("@gorth/structure/cores/auth/oauth2");
+  assert.equal(
+    published.verifyAccessTokenRequest,
+    sdk.verifyAccessTokenRequest,
+  );
+  const generic = await import("better-auth/plugins/generic-oauth");
+  assert.equal(
+    (await import("@gorth/structure/cores/auth/server/generic-oauth"))
+      .genericOAuth,
+    generic.genericOAuth,
+  );
+  const client = await import("better-auth/client");
+  assert.equal(
+    (await import("@gorth/structure/cores/auth/client/vanilla"))
+      .createAuthClient,
+    client.createAuthClient,
+  );
 });
 
 test("public HTTP and desktop graphs contain no configured auth, env, Electron, Node or UI", async () => {
@@ -150,38 +148,6 @@ test("built client import graph is browser-safe and has no Next/Electron/server 
     fileURLToPath(import.meta.resolve("@gorth/structure/modules/auth/client")),
   );
   assert.ok(visited.size > 0);
-});
-
-test("built SDK session adapter works through ESM and CJS without an SDK dependency", async () => {
-  for (const module of [
-    await import("@gorth/structure/modules/auth/client"),
-    require("@gorth/structure/modules/auth/client"),
-  ]) {
-    const adapter = module.createSessionAuthAdapter({
-      getSession: async () => ({
-        data: {
-          user: { id: "fixture", private: "SECRET" },
-          session: {
-            token: "SECRET",
-            expiresAt: new Date(120_000),
-          },
-        },
-      }),
-      signOut: async () => ({ data: { success: true } }),
-      mapUser: (user) => ({ id: user.id }),
-      login: async () => {},
-      now: () => 1_000,
-    });
-    const state = module.createAuthClient(adapter);
-    assert.deepEqual(await state.load(), {
-      user: { id: "fixture" },
-      expiresAt: 120_000,
-    });
-    assert(!JSON.stringify(state.getSnapshot()).includes("SECRET"));
-    await state.logout();
-    assert.equal(state.getSnapshot().session, null);
-    state.dispose();
-  }
 });
 
 test("new utils exports resolve in ESM/CJS and type contracts have no runtime dependencies", async () => {

@@ -1,1 +1,1 @@
-export * from "better-auth/cookies"
+export * from "better-auth/cookies";

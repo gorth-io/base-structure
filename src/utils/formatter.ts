@@ -1,36 +1,11 @@
 import type {
   AuthIdentity,
   DesktopRpcResponse,
-  LoginTransaction,
-  OAuthConfig,
   OAuthIdentityClaims,
-  PublicSession,
-  SessionCredentials,
-  StoredSession,
 } from "@/utils/interface";
 import type { AxiosResponse } from "axios";
 
-/** Public projection deliberately omits credentials, sid, storage key and revision. */
-export function formatPublicSession<User>(
-  session: StoredSession<User>,
-): PublicSession<User> {
-  return { user: session.user, expiresAt: session.expiresAt };
-}
-
-/** Trusted runtime projection only; never return this over HTTP or renderer IPC. */
-export function formatSessionCredentials<User>(
-  session: StoredSession<User>,
-): SessionCredentials<User> {
-  return {
-    user: session.user,
-    subject: session.subject,
-    sid: session.sid,
-    credentials: { ...session.credentials },
-    expiresAt: session.expiresAt,
-  };
-}
-
-/** Call only AFTER protocol validation. Never project provider/local authorization roles. */
+/** Call only after provider identity validation. Never project authorization roles. */
 export function formatOAuthIdentity(data: OAuthIdentityClaims): AuthIdentity {
   return {
     subject: data.sub,
@@ -48,60 +23,6 @@ export function formatEpochMilliseconds(value: Date | string | number): number {
     : typeof value === "string"
       ? Date.parse(value)
       : value;
-}
-
-export function formatOAuthTokenBody(
-  body: URLSearchParams,
-  config: OAuthConfig,
-): URLSearchParams {
-  const result = new URLSearchParams(body);
-  result.set("client_id", config.clientId);
-  for (const resource of config.resources ?? [])
-    result.append("resource", resource);
-  return result;
-}
-
-/** Config and transaction must already be validated by the OAuth engine. */
-export function formatOAuthAuthorizationUrl(
-  config: OAuthConfig,
-  transaction: LoginTransaction,
-  challenge: string,
-  prompt?: "login" | "create" | "consent" | "select_account",
-): string {
-  const url = new URL(config.endpoints.authorization);
-  url.search = new URLSearchParams({
-    response_type: "code",
-    client_id: config.clientId,
-    redirect_uri: config.redirectUri,
-    scope: config.scopes.join(" "),
-    state: transaction.state,
-    nonce: transaction.nonce,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-  }).toString();
-  if (prompt) url.searchParams.set("prompt", prompt);
-  for (const resource of config.resources ?? [])
-    url.searchParams.append("resource", resource);
-  return url.href;
-}
-
-export function formatOAuthLogoutUrl(
-  endpoint: string,
-  clientId: string,
-  redirectUri: string,
-): string {
-  const url = new URL(endpoint);
-  url.search = new URLSearchParams({
-    client_id: clientId,
-    post_logout_redirect_uri: redirectUri,
-  }).toString();
-  return url.href;
-}
-
-export function formatHexBytes(buffer: ArrayBuffer) {
-  return [...new Uint8Array(buffer)]
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 export function formatRpcFailure(
