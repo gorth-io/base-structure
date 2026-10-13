@@ -42,25 +42,27 @@ test("native auth helpers expose ESM/CommonJS without legacy engines", async () 
   assert.throws(() => require("@gorth/structure/modules/auth/desktop"));
 });
 
-test("official OAuth SDK exports remain the SDK implementation", async () => {
-  const sdk = await import("better-auth/oauth2");
-  const published = await import("@gorth/structure/cores/auth/oauth2");
-  assert.equal(
-    published.verifyAccessTokenRequest,
-    sdk.verifyAccessTokenRequest,
-  );
-  const generic = await import("better-auth/plugins/generic-oauth");
-  assert.equal(
-    (await import("@gorth/structure/cores/auth/server/generic-oauth"))
-      .genericOAuth,
-    generic.genericOAuth,
-  );
-  const client = await import("better-auth/client");
-  assert.equal(
-    (await import("@gorth/structure/cores/auth/client/vanilla"))
-      .createAuthClient,
-    client.createAuthClient,
-  );
+test("Better Auth is an app-owned required peer, not a Structure SDK export", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(manifest.peerDependencies["better-auth"], "^1.7.7");
+  assert.notEqual(manifest.peerDependenciesMeta?.["better-auth"]?.optional, true);
+  assert.equal(manifest.dependencies["better-auth"], undefined);
+  assert.equal(manifest.devDependencies["better-auth"], "1.7.7");
+  for (const name of Object.keys(manifest.dependencies))
+    assert.ok(!name.startsWith("@better-auth/"), name);
+  const retiredPaths = [
+    "cores/auth", "cores/auth/index", "cores/auth/client", "cores/auth/client/vanilla",
+    "cores/auth/server", "cores/auth/server/generic-oauth", "cores/auth/server/oap",
+    "cores/auth/client/oap", "cores/auth/adapters", "cores/auth/cookies",
+    "cores/auth/oauth2", "cores/auth/plugins", "cores/auth/integrations/next",
+  ];
+  for (const entry of retiredPaths) {
+    const path = "@gorth/structure/" + entry;
+    assert.throws(() => require(path), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+    await assert.rejects(import(path), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+  }
+  const peer = await import("better-auth/oauth2");
+  assert.equal(typeof peer.verifyAccessTokenRequest, "function");
 });
 
 test("public HTTP and desktop graphs contain no configured auth, env, Electron, Node or UI", async () => {

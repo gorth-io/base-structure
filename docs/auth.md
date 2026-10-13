@@ -10,29 +10,45 @@ with native account/session/verification storage. Electron uses the official
 Electron SDK with its app backend. Do not create another OAuth/session engine
 inside Structure or use an ID token as a service access token.
 
-## Direct SDK exports
+## App-owned SDK and required peer
 
-| Public path suffix (after `@gorth/structure/`) | SDK implementation                         |
-| ---------------------------------------------- | ------------------------------------------ |
-| `cores/auth`                                   | `better-auth`                              |
-| `cores/auth/client`                            | `better-auth/react` (React host required)  |
-| `cores/auth/client/vanilla`                    | `better-auth/client`                       |
-| `cores/auth/client/plugins`                    | `better-auth/client/plugins`               |
-| `cores/auth/server`                            | `better-auth/node`                         |
-| `cores/auth/server/generic-oauth`              | `better-auth/plugins/generic-oauth`        |
-| `cores/auth/server/oap`                        | `@better-auth/oauth-provider`              |
-| `cores/auth/client/oap`                        | `@better-auth/oauth-provider/client`       |
-| `cores/auth/oauth2`                            | `better-auth/oauth2`                       |
-| `cores/auth/integrations/next`                 | `better-auth/next-js` (Next host required) |
-| `cores/auth/adapters`                          | official adapters, including Drizzle       |
-| `cores/auth/plugins`, `cores/auth/cookies`     | official plugins/cookies                   |
+`better-auth` is a **required peer dependency** (`^1.7.7`), not a runtime
+dependency installed and re-exported by Structure. The package pins 1.7.7 in its
+development dependencies only for builds and integration tests.
 
-These are re-exports, not configured factories or alternative implementations.
+Every consuming application must declare its own direct `better-auth`
+dependency, including Electron main and both runtimes of a split client/server
+application. A package manager may auto-install peers, so the peer declaration
+does not by itself enforce a direct dependency in the application's manifest.
+
+```sh
+pnpm add better-auth@1.7.7
+```
+
+Import native APIs directly:
+
+```ts
+import { betterAuth } from "better-auth";
+import { createAuthClient } from "better-auth/react";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
+import { requestToResourceInput, verifyAccessTokenRequest } from "better-auth/oauth2";
+```
+
+The `cores/auth` and `cores/auth/*` namespaces are retired and explicitly
+blocked by the export map. There are no compatibility re-exports. Native
+adapters, cookies, integrations and plugins must use their official package
+paths (for example `better-auth/adapters/drizzle`, `better-auth/cookies` and
+`better-auth/next-js`).
+
+Install optional features only in the app that uses them: OAuth Provider,
+enterprise SSO, Infra, SCIM, Stripe or Electron use their owning
+`@better-auth/*` package directly. Structure no longer depends on any of
+those feature packages. This is a breaking export change; publish a new
+breaking release/tag and update consumers deliberately.
+
 SDK clients use `signIn.social({ provider: configuredProviderId })` in 1.7.7;
 Generic OAuth does not need an invented `genericOAuthClient` plugin.
 `nextCookies` is server integration, not a renderer/client export.
-Electron SDK imports remain in desktop apps: this package does not acquire an
-Electron dependency merely to wrap it.
 
 ## Modules retained because current apps use them
 

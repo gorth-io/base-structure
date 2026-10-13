@@ -87,41 +87,8 @@
       "import": "./dist/cores/*/*/*.js",
       "require": "./dist/cores/*/*/*.cjs"
     },
-    "./cores/auth": {
-      "types": "./dist/cores/auth/index.d.ts",
-      "import": "./dist/cores/auth/index.js",
-      "require": "./dist/cores/auth/index.cjs"
-    },
-    "./cores/auth/client": {
-      "types": "./dist/cores/auth/client/index.d.ts",
-      "import": "./dist/cores/auth/client/index.js",
-      "require": "./dist/cores/auth/client/index.cjs"
-    },
-    "./cores/auth/server": {
-      "types": "./dist/cores/auth/server/index.d.ts",
-      "import": "./dist/cores/auth/server/index.js",
-      "require": "./dist/cores/auth/server/index.cjs"
-    },
-    "./cores/auth/adapters": {
-      "types": "./dist/cores/auth/adapters/index.d.ts",
-      "import": "./dist/cores/auth/adapters/index.js",
-      "require": "./dist/cores/auth/adapters/index.cjs"
-    },
-    "./cores/auth/cookies": {
-      "types": "./dist/cores/auth/cookies/index.d.ts",
-      "import": "./dist/cores/auth/cookies/index.js",
-      "require": "./dist/cores/auth/cookies/index.cjs"
-    },
-    "./cores/auth/plugins": {
-      "types": "./dist/cores/auth/plugins/index.d.ts",
-      "import": "./dist/cores/auth/plugins/index.js",
-      "require": "./dist/cores/auth/plugins/index.cjs"
-    },
-    "./cores/auth/oauth2": {
-      "types": "./dist/cores/auth/oauth2/index.d.ts",
-      "import": "./dist/cores/auth/oauth2/index.js",
-      "require": "./dist/cores/auth/oauth2/index.cjs"
-    }
+    "./cores/auth": null,
+    "./cores/auth/*": null
   },
   "typesVersions": {
     "*": {
@@ -154,27 +121,6 @@
       ],
       "*": [
         "dist/index.d.ts"
-      ],
-      "cores/auth": [
-        "dist/cores/auth/index.d.ts"
-      ],
-      "cores/auth/client": [
-        "dist/cores/auth/client/index.d.ts"
-      ],
-      "cores/auth/server": [
-        "dist/cores/auth/server/index.d.ts"
-      ],
-      "cores/auth/adapters": [
-        "dist/cores/auth/adapters/index.d.ts"
-      ],
-      "cores/auth/cookies": [
-        "dist/cores/auth/cookies/index.d.ts"
-      ],
-      "cores/auth/plugins": [
-        "dist/cores/auth/plugins/index.d.ts"
-      ],
-      "cores/auth/oauth2": [
-        "dist/cores/auth/oauth2/index.d.ts"
       ]
     }
   },
@@ -200,26 +146,18 @@
     "@ably/ai-transport": "^0.9.0",
     "@ably/chat": "^1.4.0",
     "@ably/spaces": "^0.5.2",
-    "@better-auth/infra": "^0.4.18",
-    "@better-auth/oauth-provider": "^1.7.7",
-    "@better-auth/scim": "^1.7.7",
-    "@better-auth/sso": "^1.7.7",
-    "@better-auth/stripe": "^1.7.7",
     "@supabase/postgrest-js": "^2.117.3",
     "@supabase/server": "^1.9.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "ably": "^2.29.0",
     "axios": "^1.20.0",
-    "better-auth": "^1.7.7",
     "graphql": "^17.0.2",
     "graphql-request": "^7.4.0",
     "graphql-tag": "^2.12.7",
     "jose": "^6.2.12",
     "pg": "^8.23.1",
     "postgres": "^3.4.9",
-    "svix": "^2.8.0",
-    "tsx": "^4.23.15",
     "uuid": "^14.0.3",
     "zod": "^4.6.7"
   },
@@ -229,7 +167,12 @@
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
     "tsdown": "^0.23.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "better-auth": "1.7.7",
+    "tsx": "^4.23.15"
   },
-  "packageManager": "pnpm@10.33.4"
+  "packageManager": "pnpm@10.33.4",
+  "peerDependencies": {
+    "better-auth": "^1.7.7"
+  }
 }

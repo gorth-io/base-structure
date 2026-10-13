@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
-import { genericOAuth } from "../src/cores/auth/server/generic-oauth";
-import { createAuthClient } from "../src/cores/auth/client/vanilla";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
+import { createAuthClient } from "better-auth/client";
 import {
   createOAuthIdentityValidator,
   createIdentityCache,

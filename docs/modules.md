@@ -30,7 +30,7 @@ Desktop RPC still requires app-owned IPC sender/frame validation and trusted
 preload transport. Shortcut policies/registration/persistence stay in the app.
 Supabase credentials/RLS/ownership remain app responsibilities.
 
-Use `pnpm verify` before releasing. Public SDK paths and optional host-framework
-requirements are listed in auth.md. GitHub distribution remains private-to-npm;
+Use `pnpm verify` before releasing. The app-owned Better Auth SDK peer and direct
+import requirements are listed in auth.md. GitHub distribution remains private-to-npm;
 pin consumers to a tested release commit/tag. No app dependency or DB/cloud state
 is changed by building this package.

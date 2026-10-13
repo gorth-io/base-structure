@@ -22,4 +22,6 @@ export default defineConfig({
   target: "es2024",
   outDir: "dist",
   treeshake: true,
+  // The host application owns the Better Auth instance and SDK version.
+  external: ["better-auth", /^better-auth\//],
 });

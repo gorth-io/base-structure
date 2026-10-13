@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { betterAuth } from "../src/cores/auth";
-import { genericOAuth } from "../src/cores/auth/server/generic-oauth";
+import { betterAuth } from "better-auth";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 
-test("native Generic OAuth still owns state/PKCE/account selection through exported SDK", async () => {
+test("native Generic OAuth still owns state/PKCE/account selection through the app-owned SDK peer", async () => {
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async () =>
     Response.json({
