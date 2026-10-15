@@ -47,7 +47,7 @@ test("Better Auth is an app-owned required peer, not a Structure SDK export", as
   assert.equal(manifest.peerDependencies["better-auth"], "^1.7");
   assert.notEqual(manifest.peerDependenciesMeta?.["better-auth"]?.optional, true);
   assert.equal(manifest.dependencies["better-auth"], undefined);
-  assert.equal(manifest.devDependencies["better-auth"], "1.7.7");
+  assert.equal(manifest.devDependencies["better-auth"], "1.7");
   for (const name of Object.keys(manifest.dependencies))
     assert.ok(!name.startsWith("@better-auth/"), name);
   const retiredPaths = [
