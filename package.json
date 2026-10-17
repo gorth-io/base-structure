@@ -143,13 +143,13 @@
     "test:exports": "node --test tests/auth-exports.test.mjs"
   },
   "dependencies": {
-    "@ably/ai-transport": "^0.9.0",
+    "@ably/ai-transport": "^0.10.0",
     "@ably/chat": "^1.4.0",
     "@ably/spaces": "^0.5.2",
-    "@supabase/postgrest-js": "^2.117.3",
+    "@supabase/postgrest-js": "^2.118.0",
     "@supabase/server": "^1.9.2",
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.3",
+    "@supabase/supabase-js": "^2.118.0",
     "ably": "^2.29.0",
     "axios": "^1.20.0",
     "graphql": "^17.0.2",
@@ -168,11 +168,11 @@
     "prettier": "^3.9.10",
     "tsdown": "^0.23.1",
     "typescript": "^5.9.3",
-    "better-auth": "1.7.8",
+    "better-auth": "1.7.10",
     "tsx": "^4.23.15"
   },
   "packageManager": "pnpm@10.33.4",
   "peerDependencies": {
-    "better-auth": "^1.7.8"
+    "better-auth": "^1.7.10"
   }
 }
