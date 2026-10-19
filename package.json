@@ -1,6 +1,6 @@
 {
   "name": "@gorth/structure",
-  "version": "0.0.0-alpha.1",
+  "version": "0.0.0-alpha.2",
   "description": "",
   "type": "module",
   "author": "Gorthenburg",
@@ -152,7 +152,7 @@
     "@supabase/supabase-js": "^2.118.0",
     "ably": "^2.29.0",
     "axios": "^1.20.0",
-    "graphql": "^17.0.2",
+    "graphql": "^16.14.2",
     "graphql-request": "^7.4.0",
     "graphql-tag": "^2.12.7",
     "jose": "^6.2.12",
@@ -164,15 +164,16 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
+    "better-auth": "1.7.11",
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
     "tsdown": "^0.23.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "better-auth": "1.7.10",
-    "tsx": "^4.23.15"
+    "vitest": "^5.0.5"
   },
   "packageManager": "pnpm@10.33.4",
   "peerDependencies": {
-    "better-auth": "^1.7.10"
+    "better-auth": "^1.7.11"
   }
 }
