@@ -44,10 +44,10 @@ test("native auth helpers expose ESM/CommonJS without legacy engines", async () 
 
 test("Better Auth is an app-owned required peer, not a Structure SDK export", async () => {
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(manifest.peerDependencies["better-auth"], "^1.7.11");
+  assert.equal(manifest.peerDependencies["better-auth"], "^1.7.12");
   assert.notEqual(manifest.peerDependenciesMeta?.["better-auth"]?.optional, true);
   assert.equal(manifest.dependencies["better-auth"], undefined);
-  assert.equal(manifest.devDependencies["better-auth"], "1.7.11");
+  assert.equal(manifest.devDependencies["better-auth"], "1.7.12");
   for (const name of Object.keys(manifest.dependencies))
     assert.ok(!name.startsWith("@better-auth/"), name);
   const retiredPaths = [
