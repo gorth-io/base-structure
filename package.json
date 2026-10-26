@@ -1,6 +1,6 @@
 {
   "name": "@gorth/structure",
-  "version": "0.0.0-alpha.3",
+  "version": "0.0.0-alpha.4",
   "description": "",
   "type": "module",
   "author": "Gorthenburg",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/goraria/base-structure.git"
+    "url": "git+https://github.com/gorth-io/base-structure.git"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -150,7 +150,7 @@
     "@supabase/server": "^1.9.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
-    "ably": "^2.29.0",
+    "ably": "^2.30.0",
     "axios": "^1.20.0",
     "graphql": "^16.14.2",
     "graphql-request": "^7.4.0",
@@ -164,16 +164,16 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
-    "better-auth": "1.7.12",
+    "better-auth": "1.7.13",
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
-    "tsdown": "^0.23.1",
+    "tsdown": "^0.23.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.0.5"
   },
   "packageManager": "pnpm@10.33.4",
   "peerDependencies": {
-    "better-auth": "^1.7.12"
+    "better-auth": "^1.7.13"
   }
 }
