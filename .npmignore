@@ -1,0 +1,6 @@
+src/
+docs/
+tests/
+scripts/
+node_modules/
+*.log

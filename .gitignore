@@ -5,5 +5,4 @@ dist
 .base
 **/.DS_Store
 
-# scripts/
-# tests/
+.npmrc
