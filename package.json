@@ -1,6 +1,6 @@
 {
   "name": "@gorth/structure",
-  "version": "0.0.0-alpha.4",
+  "version": "0.0.0-alpha.5",
   "description": "",
   "type": "module",
   "author": "Gorthenburg",
@@ -143,37 +143,37 @@
     "test:exports": "node --test tests/auth-exports.test.mjs"
   },
   "dependencies": {
-    "@ably/ai-transport": "^0.10.0",
-    "@ably/chat": "^1.4.0",
-    "@ably/spaces": "^0.5.2",
+    "@ably/ai-transport": "^0.11.0",
+    "@ably/chat": "^2.0.0",
+    "@ably/spaces": "^0.6.0",
     "@supabase/postgrest-js": "^2.118.0",
     "@supabase/server": "^1.9.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "ably": "^2.30.0",
-    "axios": "^1.20.0",
+    "axios": "^1.21.0",
     "graphql": "^16.14.2",
     "graphql-request": "^7.4.0",
     "graphql-tag": "^2.12.7",
-    "jose": "^6.2.13",
+    "jose": "^6.2.15",
     "pg": "^8.23.1",
-    "postgres": "^3.4.9",
+    "postgres": "^4.0.0",
     "uuid": "^14.0.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
-    "better-auth": "1.7.13",
+    "better-auth": "1.7.15",
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
-    "tsdown": "^0.23.2",
+    "tsdown": "^0.23.4",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@10.33.4",
   "peerDependencies": {
-    "better-auth": "^1.7.13"
+    "better-auth": "^1.7.15"
   }
 }
