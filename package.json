@@ -1,5 +1,5 @@
 {
-  "name": "@gorth/structure",
+  "name": "@gorth-io/structure",
   "version": "0.0.0-alpha.5",
   "description": "",
   "type": "module",
@@ -12,7 +12,10 @@
     "ably",
     "postgres",
     "graphql",
-    "better-auth"
+    "better-auth",
+    "client",
+    "server",
+    "desktop"
   ],
   "repository": {
     "type": "git",
