@@ -58,4 +58,13 @@ jobs:
 
       - name: Publish
         if: steps.version.outputs.publish == 'true'
-        run: npm publish --access public --tag alpha
+        run: npm publish --access public --tag latest
+
+      - name: Update dist-tag
+        if: steps.version.outputs.publish == 'true'
+        env:
+          PACKAGE_NAME: ${{ steps.version.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          npm dist-tag add \
+            "$PACKAGE_NAME@$PACKAGE_VERSION" alpha
