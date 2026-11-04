@@ -1,6 +1,6 @@
 {
   "name": "@gorth-io/structure",
-  "version": "0.0.0-alpha.6",
+  "version": "0.0.0-alpha.7",
   "description": "TypeScript infrastructure for HTTP clients, authentication coordination, Supabase, and database integrations in the gorth-io ecosystem.",
   "type": "module",
   "author": "Gorthenburg",

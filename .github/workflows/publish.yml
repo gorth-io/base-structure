@@ -2,8 +2,7 @@ name: Publish npm
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -42,29 +41,17 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Check published version
-        id: version
+      - name: Publish and update tags
         shell: bash
         run: |
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
+          ACCESS=$(node -p "require('./package.json').publishConfig.access")
+          TAG=$(node -p "require('./package.json').publishConfig.tag")
+          REGISTRY=$(node -p "require('./package.json').publishConfig.registry")
 
-          if npm view "$NAME@$VERSION" version \
-            --registry=https://registry.npmjs.org >/dev/null 2>&1; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
+          npm view "$NAME@$VERSION" version --registry="$REGISTRY" >/dev/null 2>&1 ||
+            npm publish --access="$ACCESS" --tag=latest --registry="$REGISTRY"
 
-      - name: Publish
-        if: steps.version.outputs.publish == 'true'
-        run: npm publish --access public --tag latest
-
-      - name: Update dist-tag
-        if: steps.version.outputs.publish == 'true'
-        env:
-          PACKAGE_NAME: ${{ steps.version.outputs.name }}
-          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          npm dist-tag add \
-            "$PACKAGE_NAME@$PACKAGE_VERSION" alpha
+          npm dist-tag add "$NAME@$VERSION" "$TAG" --registry="$REGISTRY"
+          npm dist-tag ls "$NAME" --registry="$REGISTRY"
