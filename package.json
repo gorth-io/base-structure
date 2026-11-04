@@ -1,11 +1,11 @@
 {
   "name": "@gorth-io/structure",
-  "version": "0.0.0-alpha.5",
+  "version": "0.0.0-alpha.6",
   "description": "",
   "type": "module",
   "author": "Gorthenburg",
   "license": "GORTH",
-  "private": true,
+  "private": false,
   "keywords": [
     "gorth",
     "supabase",
@@ -142,13 +142,13 @@
   },
   "scripts": {
     "build": "tsdown --minify",
-    "prepack": "pnpm verify",
-    "verify": "pnpm typecheck && pnpm test:types && pnpm test && pnpm build && pnpm test:exports",
+    "prepack": "bun run build",
+    "verify": "bun verify",
     "dev": "tsdown --format esm,cjs --dts --out-dir dist --watch",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "update": "pnpm update",
+    "update": "bun update",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:types": "tsc --project tsconfig.test.json",
     "test:exports": "node --test tests/auth-exports.test.mjs"
@@ -175,15 +175,15 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
-    "better-auth": "1.7.15",
+    "better-auth": "1.7.16",
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
-    "tsdown": "^0.23.4",
+    "tsdown": "^0.23.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.1.0"
   },
   "peerDependencies": {
-    "better-auth": "^1.7.15"
+    "better-auth": "^1.7.16"
   }
 }

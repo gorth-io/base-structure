@@ -1,6 +1,6 @@
 # Native Better Auth integration
 
-Targets the installed Better Auth 1.7.7 SDK. Applications own `betterAuth({...})`,
+Targets the installed Better Auth 1.7 SDK. Applications own `betterAuth({...})`,
 provider configuration, keys, trusted origins, database schemas/adapters,
 business permissions, cookies and routing. This package never reads env or
 connects to a database.
@@ -12,8 +12,8 @@ inside Structure or use an ID token as a service access token.
 
 ## App-owned SDK and required peer
 
-`better-auth` is a **required peer dependency** (`^1.7.7`), not a runtime
-dependency installed and re-exported by Structure. The package pins 1.7.7 in its
+`better-auth` is a **required peer dependency** (`^1.7`), not a runtime
+dependency installed and re-exported by Structure. The package pins 1.7 in its
 development dependencies only for builds and integration tests.
 
 Every consuming application must declare its own direct `better-auth`
@@ -22,7 +22,7 @@ application. A package manager may auto-install peers, so the peer declaration
 does not by itself enforce a direct dependency in the application's manifest.
 
 ```sh
-pnpm add better-auth@1.7.7
+bun add better-auth@1.7
 ```
 
 Import native APIs directly:
@@ -46,7 +46,7 @@ enterprise SSO, Infra, SCIM, Stripe or Electron use their owning
 those feature packages. This is a breaking export change; publish a new
 breaking release/tag and update consumers deliberately.
 
-SDK clients use `signIn.social({ provider: configuredProviderId })` in 1.7.7;
+SDK clients use `signIn.social({ provider: configuredProviderId })` in 1.7;
 Generic OAuth does not need an invented `genericOAuthClient` plugin.
 `nextCookies` is server integration, not a renderer/client export.
 
